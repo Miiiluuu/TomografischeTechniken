@@ -1,11 +1,59 @@
 """
     Bildrekonstruktion: "Wir basteln uns einen CT".
     Aufgabe 1: Erzeugung eines Satzes von Projektionen aus echten und
-    simulierten CT-Bildern.
+    simulierten CT-Bildern, stellt Sinogramm grafisch dar. Dabei koennen
+    bestimmte Parameter eingestellt werden.
 """
+
+import sys
 
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.ndimage import map_coordinates
+from PyQt5 import QtWidgets
+from PyQt5.QtWidgets import (QFileDialog, QPushButton, QGridLayout,
+                             QVBoxLayout)
+import pyqtgraph
+
+
+class Gui(QtWidgets.QWidget):
+    # TODO: ueberall self davorschreiben
+    def __init__(self):
+        super().__init__()
+        
+        # (1) Aenderung an Layout: Griderzeugung, bearbeitung
+        grid = QGridLayout()
+        self.setLayout(grid)
+        grid.setSpacing(10)
+        
+        # (2) VBox erzeugen, bearbeiten und Grid hinzufuegen
+        vbox = QVBoxLayout()
+        grid.addLayout(vbox, 0, 0)
+        vbox.addStretch(1)
+        
+        # (3) Hinzufuegen von Buttons und Ahnlichem
+        loadButton = QPushButton("Laden")
+        loadButton.clicked.connect(self.loadButtonPress)
+        vbox.addWidget(loadButton)
+        
+        # erstes Bild
+        graphic_oben1 = pyqtgraph.GraphicsLayoutWidget()
+        view1 = graphic_oben1.addViewBox()
+        view1.setAspectLocked(True)
+        # damit verhalten wie Mathplotlib
+        view1.invertY(True)
+        self.img_oben1 = pyqtgraph.ImageItem()
+        # damit verhalten wie Mathplotlib
+        self.img_oben1.setOpts(axisOrder='row-major')
+        view1.addItem(self.img_oben1)
+        grid.addWidget(graphic_oben1, 0, 1)
+        self.img_oben1.setImage(np.eye(30))
+
+    def loadButtonPress(self):
+        print("bla")
+        # Bild laden und in img_oben1 anzeigen
+        # mit FileDial Browsen, abspeichern und dann loaden (np), geloadetes
+        # anzeigen (setImage)
 
 
 def drehmatrix(grad):
@@ -29,7 +77,7 @@ def drehung_vorverarbeitung(image):
     """ Fuer eine anschließende Drehung muessen am Rande des Originalbild
         Nullen hinzugefuegt werden, um eine anschließende verlustlose Drehung
         des Bildes zu ermoeglichen (es sollen keine gefuellten Werte des
-        Originalbildes abgeschnitten werden).
+        Originalbildes abgeschnitten werden, nur Nullen).
 
         Parameter:
         ----------
@@ -110,6 +158,7 @@ def drehung(image, grad):
     pixel_mitte = len(image) // 2
     # TODO: mitte perfekt runden (auf ganze Zahlen) Jetzt ist es vllt nicht
     # immer exakt die Mitte des Koordinatensystems?
+#    koord_rotate = []
     for x in range(-pixel_mitte, pixel_mitte):
         for y in range(-pixel_mitte, pixel_mitte):
             # Rotationsmatrix auf alle x-Werte anwenden
@@ -122,18 +171,26 @@ def drehung(image, grad):
             # wenn Bedingung erfuellt existieren Grauwerte im Originalbild,
             # die ins rotierte Bild an der richtigen Stelle uebernommen werden
             # (ansonsten Nullen an dieser Stelle)
+            # Addieren von 128 (pixel_quadrant), um Array nicht mit
+            # negativen Indices anzusprechen (wuerde falsche Werte liefern)
+            # RandNullen werden abgeschnitten, ist egal
             if (-pixel_mitte <= x_transform < pixel_mitte) and \
                (-pixel_mitte <= y_transform < pixel_mitte):
-                # Addieren von 128 (pixel_quadrant), um Array nicht mit
+#                koord_rotate.append((x_transform + pixel_mitte,
+#                                     y_transform + pixel_mitte))
+                # Addieren von 128 (pixel_mitte), um Array nicht mit
                 # negativen Indices anzusprechen (wuerde falsche Werte liefern)
+                # map coordinates fier Grauwertapproximation?
                 image_transform[y + pixel_mitte, x + pixel_mitte] = \
-                    image[y_transform + pixel_mitte, x_transform + pixel_mitte]
+                    map_coordinates(image,
+                                    np.array([(y_transform + pixel_mitte,
+                                               x_transform + pixel_mitte)]).T)
     return image_transform
 
 
-def main():
+def sinogram():
     # Einlesen der Daten
-    data = np.load("dreiNadel32.npy")
+    data = np.load("Bilder/dreiNadeln32.npy")
     # Kontrolldarstellung
     plt.figure()
     plt.imshow(data)
@@ -146,7 +203,7 @@ def main():
 #    plt.imshow(data_transform)
     linienintegrale = []
     # verschiedene (Rotations)winkel durchgehen:
-    for alpha in np.linspace(0, 180, 10, endpoint=False):
+    for alpha in np.linspace(0, 180, 100, endpoint=False):
         # Drehung
         data_transform = drehung(data_groß, alpha)
         # Bildung von Linienintegralen fuer einzelnen Rotationswinkel alpha:
@@ -160,11 +217,18 @@ def main():
     linienintegrale_array = np.array(linienintegrale)
     plt.figure()
     plt.imshow(linienintegrale_array)
-
+    
+def main():
+    app = QtWidgets.QApplication(sys.argv)
+    ui = Gui()
+    ui.show()
+    sys.exit(app.exec_())
+    
 
 if __name__ == "__main__":
     main()
     
     
-
+# Buttons: Parameter Anzahl Winkelschritte, pi oder 2pi (Radiobutton, Checkbox)
+    
     

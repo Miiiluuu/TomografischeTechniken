@@ -2,7 +2,8 @@
     Bildrekonstruktion: "Wir basteln uns einen CT".
     Aufgabe 1: Erzeugung eines Satzes von Projektionen aus echten und
     simulierten CT-Bildern, stellt Sinogramm grafisch dar. Dabei koennen
-    bestimmte Parameter eingestellt werden.
+    bestimmte Parameter eingestellt werden und werden bei grafischen
+    Darstellung beruecksichtigt.
 """
 
 import sys
@@ -17,44 +18,75 @@ import pyqtgraph
 
 
 class Gui(QtWidgets.QWidget):
-    # TODO: ueberall self davorschreiben
+    # TODO: ueberall self davorschreiben?
     def __init__(self):
         super().__init__()
         
-        # (1) Aenderung an Layout: Griderzeugung, bearbeitung
+        # Layouteinstellungen
+        # (1) Griderzeugung und -bearbeitung
         grid = QGridLayout()
         self.setLayout(grid)
         grid.setSpacing(10)
         
-        # (2) VBox erzeugen, bearbeiten und Grid hinzufuegen
+        # (2) VBox erzeugen, bearbeiten und dem Grid hinzufuegen
         vbox = QVBoxLayout()
         grid.addLayout(vbox, 0, 0)
         vbox.addStretch(1)
         
-        # (3) Hinzufuegen von Buttons und Ahnlichem
-        loadButton = QPushButton("Laden")
+        # (3) Hinzufuegen von Buttons und Aehnlichem
+        loadButton = QPushButton("Open")
+        # TODO: naehere Beschreibung des Buttons mit Cursor drauf?
         loadButton.clicked.connect(self.loadButtonPress)
         vbox.addWidget(loadButton)
         
         # erstes Bild
-        graphic_oben1 = pyqtgraph.GraphicsLayoutWidget()
-        view1 = graphic_oben1.addViewBox()
+        graphic1 = pyqtgraph.GraphicsLayoutWidget()
+        view1 = graphic1.addViewBox()
         view1.setAspectLocked(True)
         # damit verhalten wie Mathplotlib
         view1.invertY(True)
-        self.img_oben1 = pyqtgraph.ImageItem()
+        self.img1 = pyqtgraph.ImageItem()
         # damit verhalten wie Mathplotlib
-        self.img_oben1.setOpts(axisOrder='row-major')
-        view1.addItem(self.img_oben1)
-        grid.addWidget(graphic_oben1, 0, 1)
-        self.img_oben1.setImage(np.eye(30))
+        self.img1.setOpts(axisOrder='row-major')
+        view1.addItem(self.img1)
+        grid.addWidget(graphic1, 0, 1)
+        
+        # zweites Bild
+        graphic2 = pyqtgraph.GraphicsLayoutWidget()
+        view2 = graphic2.addViewBox()
+        view2.setAspectLocked(True)
+        # damit verhalten wie Mathplotlib
+        view2.invertY(True)
+        self.img2 = pyqtgraph.ImageItem()
+        # damit verhalten wie Mathplotlib
+        self.img2.setOpts(axisOrder='row-major')
+        view2.addItem(self.img2)
+        grid.addWidget(graphic2, 0, 2)
+        
 
     def loadButtonPress(self):
-        print("bla")
-        # Bild laden und in img_oben1 anzeigen
-        # mit FileDial Browsen, abspeichern und dann loaden (np), geloadetes
-        # anzeigen (setImage)
+        """
+        Opens a file dialog to select the file for loading in "img1".
+        
+        Parameters
+        ----------
+        None
+        
+        Return
+        ----------
+        None
+        """
+        options = QFileDialog.Options()
+        options |= QFileDialog.DontUseNativeDialog
+        fileName, _ = QFileDialog.getOpenFileName(self,"Open file", "","All Files (*);;Python Files (*.py)", options=options)
+        # TODO: Bei Cancel stürzt Programm ab??
+        # TODO: was passiert wenn es kein File gibt?
+        if fileName:
+                # Einlesen der Daten
+                self.data = np.load(fileName)
+                self.img1.setImage(self.data)
 
+# getValue um Parameter zu kriegen
 
 def drehmatrix(grad):
     """ Erzeugt eine Drehmatrix.
@@ -189,8 +221,8 @@ def drehung(image, grad):
 
 
 def sinogram():
-    # Einlesen der Daten
-    data = np.load("Bilder/dreiNadeln32.npy")
+#    # Einlesen der Daten
+#    data = np.load("Bilder/dreiNadeln32.npy")
     # Kontrolldarstellung
     plt.figure()
     plt.imshow(data)
@@ -221,6 +253,7 @@ def sinogram():
 def main():
     app = QtWidgets.QApplication(sys.argv)
     ui = Gui()
+    # TODO: Title
     ui.show()
     sys.exit(app.exec_())
     

@@ -24,44 +24,44 @@ class Gui(QtWidgets.QWidget):
         
         # Layouteinstellungen
         # (1) Griderzeugung und -bearbeitung
-        grid = QGridLayout()
-        self.setLayout(grid)
-        grid.setSpacing(10)
+        self.grid = QGridLayout()
+        self.setLayout(self.grid)
+        self.grid.setSpacing(10)
         
         # (2) VBox erzeugen, bearbeiten und dem Grid hinzufuegen
-        vbox = QVBoxLayout()
-        grid.addLayout(vbox, 0, 0)
-        vbox.addStretch(1)
+        self.vbox = QVBoxLayout()
+        self.grid.addLayout(self.vbox, 0, 0)
+        self.vbox.addStretch(1)
         
         # (3) Hinzufuegen von Buttons und Aehnlichem
-        loadButton = QPushButton("Open")
+        self.loadButton = QPushButton("Open")
         # TODO: naehere Beschreibung des Buttons mit Cursor drauf?
-        loadButton.clicked.connect(self.loadButtonPress)
-        vbox.addWidget(loadButton)
+        self.loadButton.clicked.connect(self.loadButtonPress)
+        self.vbox.addWidget(self.loadButton)
         
         # erstes Bild
-        graphic1 = pyqtgraph.GraphicsLayoutWidget()
-        view1 = graphic1.addViewBox()
-        view1.setAspectLocked(True)
+        self.graphic1 = pyqtgraph.GraphicsLayoutWidget()
+        self.view1 = self.graphic1.addViewBox()
+        self.view1.setAspectLocked(True)
         # damit verhalten wie Mathplotlib
-        view1.invertY(True)
+        self.view1.invertY(True)
         self.img1 = pyqtgraph.ImageItem()
         # damit verhalten wie Mathplotlib
         self.img1.setOpts(axisOrder='row-major')
-        view1.addItem(self.img1)
-        grid.addWidget(graphic1, 0, 1)
+        self.view1.addItem(self.img1)
+        self.grid.addWidget(self.graphic1, 0, 1)
         
         # zweites Bild
-        graphic2 = pyqtgraph.GraphicsLayoutWidget()
-        view2 = graphic2.addViewBox()
-        view2.setAspectLocked(True)
+        self.graphic2 = pyqtgraph.GraphicsLayoutWidget()
+        self.view2 = self.graphic2.addViewBox()
+        self.view2.setAspectLocked(True)
         # damit verhalten wie Mathplotlib
-        view2.invertY(True)
+        self.view2.invertY(True)
         self.img2 = pyqtgraph.ImageItem()
         # damit verhalten wie Mathplotlib
         self.img2.setOpts(axisOrder='row-major')
-        view2.addItem(self.img2)
-        grid.addWidget(graphic2, 0, 2)
+        self.view2.addItem(self.img2)
+        self.grid.addWidget(self.graphic2, 0, 2)
         
 
     def loadButtonPress(self):
@@ -86,7 +86,7 @@ class Gui(QtWidgets.QWidget):
                 self.data = np.load(fileName)
                 self.img1.setImage(self.data)
 
-# getValue um Parameter zu kriegen
+# getValue um Parameter zu kriegen, SinogrammFkt mit neuen Knopf erzeugen
 
 def drehmatrix(grad):
     """ Erzeugt eine Drehmatrix.

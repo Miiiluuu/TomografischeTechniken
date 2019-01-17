@@ -12,13 +12,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.ndimage import map_coordinates
 from PyQt5 import QtWidgets
+from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (QFileDialog, QPushButton, QGridLayout,
-                             QVBoxLayout)
+                             QVBoxLayout, QSlider, QRadioButton, QGroupBox,
+                             QProgressBar)
 import pyqtgraph
 
 
 class Gui(QtWidgets.QWidget):
-    # TODO: ueberall self davorschreiben?
     def __init__(self):
         super().__init__()
         
@@ -27,6 +28,7 @@ class Gui(QtWidgets.QWidget):
         self.grid = QGridLayout()
         self.setLayout(self.grid)
         self.grid.setSpacing(10)
+        self.setWindowTitle("Wir basteln uns ein CT!")
         
         # (2) VBox erzeugen, bearbeiten und dem Grid hinzufuegen
         self.vbox = QVBoxLayout()
@@ -34,25 +36,31 @@ class Gui(QtWidgets.QWidget):
         self.vbox.addStretch(1)
         
         # (3) Hinzufuegen von Buttons und Aehnlichem
-        # Open Button
+        # OpenButton hinzufuegen
         self.loadButton = QPushButton("Open")
         # TODO: naehere Beschreibung des Buttons mit Cursor drauf?
         self.loadButton.clicked.connect(self.loadButtonPress)
         self.vbox.addWidget(self.loadButton)
-        # Sinoknopf hinzufuegen
+        # Knopf zum Erzeugen des Sinogramms
+        # wenn das zuallererst aufgerufen wird Absturz
         self.sinoButton = QPushButton("Erstelle Sinogramm")
         self.sinoButton.clicked.connect(self.sinoButtonPress)
         self.vbox.addWidget(self.sinoButton)
-        # Saveknopf hinzufuegen
+        # SaveButton hinzufuegen
         self.saveButton = QPushButton("Save")
         self.saveButton.clicked.connect(self.saveButtonPress)
         self.vbox.addWidget(self.saveButton)
-        # Sinogramm laden
+        # Knopf zum Laden des Sinogramms
         self.loadsinoButton = QPushButton("Load Sinogramm")
         self.loadsinoButton.clicked.connect(self.loadsinoButtonPress)
         self.vbox.addWidget(self.loadsinoButton)
+        # Hinzufuegen eines SLiders zum Auswaehlen der Winkelschritte
+        self.vbox.addWidget(self.slider())
+        # Hinzufuegen einer Progressbar fuer die Vorwaertsprojektion
+        self.vbox.addWidget(self.progressbar())
         
-        # erstes Bild
+        # Hinzufuegen grafischer Bilder zum Layout
+        # Bild 1
         self.graphic1 = pyqtgraph.GraphicsLayoutWidget()
         self.view1 = self.graphic1.addViewBox()
         self.view1.setAspectLocked(True)
@@ -64,7 +72,7 @@ class Gui(QtWidgets.QWidget):
         self.view1.addItem(self.img1)
         self.grid.addWidget(self.graphic1, 0, 1)
         
-        # zweites Bild
+        # Bild 2
         self.graphic2 = pyqtgraph.GraphicsLayoutWidget()
         self.view2 = self.graphic2.addViewBox()
         self.view2.setAspectLocked(True)
@@ -76,11 +84,82 @@ class Gui(QtWidgets.QWidget):
         self.view2.addItem(self.img2)
         self.grid.addWidget(self.graphic2, 0, 2)
         
+        # Bild 3
+        self.graphic3 = pyqtgraph.GraphicsLayoutWidget()
+        self.view3 = self.graphic3.addViewBox()
+        self.view3.setAspectLocked(True)
+        # damit verhalten wie Mathplotlib
+        self.view3.invertY(True)
+        self.img3 = pyqtgraph.ImageItem()
+        # damit verhalten wie Mathplotlib
+        self.img3.setOpts(axisOrder='row-major')
+        self.view3.addItem(self.img3)
+        self.grid.addWidget(self.graphic3, 1, 1)
+        self.img3.setImage(np.eye(5))
         
+        # Bild 4
+        self.graphic4 = pyqtgraph.GraphicsLayoutWidget()
+        self.view4 = self.graphic4.addViewBox()
+        self.view4.setAspectLocked(True)
+        # damit verhalten wie Mathplotlib
+        self.view4.invertY(True)
+        self.img4 = pyqtgraph.ImageItem()
+        # damit verhalten wie Mathplotlib
+        self.img4.setOpts(axisOrder='row-major')
+        self.view4.addItem(self.img4)
+        self.grid.addWidget(self.graphic4, 1, 2)
+        self.img4.setImage(np.eye(5))
+        
+        
+    def slider(self):
+        """
+        Erstellt einen Schieberegler zur Auswahl der Anzahl an WInkelschritten,
+        die fuer eine anschließende Vorwaertsprojektion.
+        
+        Parameters
+        ----------
+        None
+        
+        Return
+        ----------
+        None
+        """
+        groupBox = QGroupBox("Anzahl der Winkelschritte")
 
+        slider = QSlider(Qt.Horizontal)
+        slider.setTickPosition(QSlider.TicksBothSides)
+        slider.setTickInterval(15)
+        slider.setSingleStep(1)
+        vbox = QVBoxLayout()
+        vbox.addWidget(slider)
+        vbox.addStretch(1)
+        groupBox.setLayout(vbox)
+
+        return groupBox
+        
+    
+    def progressbar(self):
+        """
+        Erstellt eine Progressbar, welche den Fortschritt im Erstellen
+        der Vorwaertsprojektion (des Sinogramms) darstellt.
+        
+        Parameters
+        ----------
+        None
+        
+        Return
+        ----------
+        None
+        """
+        self.setWindowTitle('bla')
+        self.progress = QProgressBar(self)
+        self.progress.setMaximum(180)
+        
+        return self.progress
+        
     def loadButtonPress(self):
         """
-        Opens a file dialog to select the file for loading in "img1".
+        Öffnet file dialog um eine Datei zu laden/grafisch darzustellen.
         
         Parameters
         ----------
@@ -92,18 +171,28 @@ class Gui(QtWidgets.QWidget):
         """
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
-        fileName, _ = QFileDialog.getOpenFileName(self,"Open file", "","All Files (*);;Python Files (*.py)", options=options)
-        # TODO: Bei Cancel stürzt Programm ab??
-        # TODO: was passiert wenn es kein File gibt?
+        fileName, _ = QFileDialog.getOpenFileName(self,
+                                                  "Open file", ""
+                                                  ,"All Files (*);;Python Files (*.py)",
+                                                  options=options)
+        # TODO: was passiert wenn es kein File gibt? bzw man etwas
+        # unzureichendes laedt? Kernel died!
+        
         if fileName:
                 # Einlesen der Daten
                 self.data = np.load(fileName)
+                # nachdem neue Datei geladen wird sollen vorherige Grafiken
+                # aus allen Bildern entfernt werden
+                self.img1.clear()
+                self.img2.clear()
+                self.img3.clear()
+                self.img4.clear()
                 self.img1.setImage(self.data)
                 
                 
     def sinoButtonPress(self):
         """
-        Erstellt Sinogramm.
+        Erstellt Sinogramm und stellt es grafisch dar.
         
         Parameters
         ----------
@@ -128,7 +217,7 @@ class Gui(QtWidgets.QWidget):
         linienintegrale = []
         # verschiedene (Rotations)winkel durchgehen:
         for alpha in np.linspace(0, 180, 10, endpoint=False):
-            print(alpha)
+            self.progress.setValue(alpha+1)
             # Drehung
             data_transform = self.drehung(data_groß, alpha)
             # Bildung von Linienintegralen fuer einzelnen Rotationswinkel alpha:
@@ -138,6 +227,7 @@ class Gui(QtWidgets.QWidget):
             #print(linienintegral)
             # einzelnen Linienintegrale abspeichern in Liste
             linienintegrale.append(linienintegral)
+        self.progress.setMaximum()    
         # Sinogramm darstellen
         self.sinogramm = np.array(linienintegrale)
 #        plt.figure()
@@ -148,7 +238,8 @@ class Gui(QtWidgets.QWidget):
         
     def saveButtonPress(self):
         """
-        Speichert Sinogramm.
+        In einem sich oeffnenden file dialog kann ein Sinogramm
+        unter selbst gewaehlten Dateinamen abgespeichert werden.
         
         Parameters
         ----------
@@ -167,8 +258,8 @@ class Gui(QtWidgets.QWidget):
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
         fileName, _ = QFileDialog.getSaveFileName(self,"Save file", "","All Files (*);;Python Files (*.py)", options=options)
-        # TODO: Bei Cancel stürzt Programm ab??
-        # TODO: was passiert wenn es kein File gibt?
+        # TODO: was passiert wenn es kein File gibt? bzw man etwas
+        # unzureichendes laedt? Kernel died!
         if fileName:
             # Einlesen der Daten
             np.save(fileName, self.sinogramm_plus_info)
@@ -194,13 +285,17 @@ class Gui(QtWidgets.QWidget):
         if fileName:
             # Einlesen der Daten
             self.sinogramm_plus_info = np.load(fileName)
+            # nachdem neue Datei geladen wird sollen vorherige Grafiken
+            # aus allen Bildern entfernt werden
+            self.img1.clear()
+            self.img2.clear()
+            self.img3.clear()
+            self.img4.clear()
             self.laenge_original = self.sinogramm_plus_info[0, 0]
             self.winkel_max = self.sinogramm_plus_info[0, 1]
             self.sinogramm = self.sinogramm_plus_info[1:]
             self.img2.setImage(self.sinogramm)
 
-
-# getValue um Parameter zu kriegen, SinogrammFkt mit neuen Knopf erzeugen
 
     def drehmatrix(self, grad):
         """ Erzeugt eine Drehmatrix.
@@ -367,5 +462,6 @@ if __name__ == "__main__":
 # TODO: Winkelanzahl: wieviele WInkeschritte
     # moved...slider
     # welcher winkelraum (180 oder 360°) checkbox
+    # TODO: ProgressBar
     
     

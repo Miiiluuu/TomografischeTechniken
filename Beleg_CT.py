@@ -463,5 +463,6 @@ if __name__ == "__main__":
     # moved...slider
     # welcher winkelraum (180 oder 360°) checkbox
     # TODO: ProgressBar
+    # TODO: funktioniert nicht mit Windowskonsole?
     
     

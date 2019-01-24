@@ -15,7 +15,7 @@ from PyQt5 import QtWidgets
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (QFileDialog, QPushButton, QGridLayout,
                              QVBoxLayout, QSlider, QRadioButton, QGroupBox,
-                             QProgressBar)
+                             QProgressBar, QCheckBox)
 import pyqtgraph
 
 
@@ -58,6 +58,8 @@ class Gui(QtWidgets.QWidget):
         self.vbox.addWidget(self.slider())
         # Hinzufuegen einer Progressbar fuer die Vorwaertsprojektion
         self.vbox.addWidget(self.progressbar())
+        # Hinzufuegen einer Checkbox 
+        self.vbox.addWidget(self.radiobutton())
         
         # Hinzufuegen grafischer Bilder zum Layout
         # Bild 1
@@ -111,6 +113,22 @@ class Gui(QtWidgets.QWidget):
         self.img4.setImage(np.eye(5))
         
         
+    def radiobutton(self):
+        groupBox = QGroupBox("Projektion im Winkelraum:")
+    
+        radio1 = QRadioButton("180°")
+        radio2 = QRadioButton("360°")
+        radio1.setChecked(True)
+        
+        vbox = QVBoxLayout()
+        vbox.addWidget(radio1)
+        vbox.addWidget(radio2)
+        vbox.addStretch(1)
+        groupBox.setLayout(vbox)
+        
+        return groupBox
+        
+        
     def slider(self):
         """
         Erstellt einen Schieberegler zur Auswahl der Anzahl an WInkelschritten,
@@ -156,6 +174,7 @@ class Gui(QtWidgets.QWidget):
         self.progress.setMaximum(180)
         
         return self.progress
+    
         
     def loadButtonPress(self):
         """
@@ -227,7 +246,7 @@ class Gui(QtWidgets.QWidget):
             #print(linienintegral)
             # einzelnen Linienintegrale abspeichern in Liste
             linienintegrale.append(linienintegral)
-        self.progress.setMaximum()    
+        self.progress.setValue(self.progress.maximum())
         # Sinogramm darstellen
         self.sinogramm = np.array(linienintegrale)
 #        plt.figure()

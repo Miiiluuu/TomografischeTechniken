@@ -61,6 +61,7 @@ class Gui(QtWidgets.QWidget):
         # Hinzufuegen einer Checkbox 
         self.vbox.addWidget(self.radiobutton())
         
+        
         # Hinzufuegen grafischer Bilder zum Layout
         # Bild 1
         self.graphic1 = pyqtgraph.GraphicsLayoutWidget()
@@ -116,13 +117,13 @@ class Gui(QtWidgets.QWidget):
     def radiobutton(self):
         groupBox = QGroupBox("Projektion im Winkelraum:")
     
-        radio1 = QRadioButton("180°")
-        radio2 = QRadioButton("360°")
-        radio1.setChecked(True)
+        self.radio1 = QRadioButton("180°")
+        self.radio2 = QRadioButton("360°")
+        self.radio1.setChecked(True)
         
         vbox = QVBoxLayout()
-        vbox.addWidget(radio1)
-        vbox.addWidget(radio2)
+        vbox.addWidget(self.radio1)
+        vbox.addWidget(self.radio2)
         vbox.addStretch(1)
         groupBox.setLayout(vbox)
         
@@ -131,8 +132,8 @@ class Gui(QtWidgets.QWidget):
         
     def slider(self):
         """
-        Erstellt einen Schieberegler zur Auswahl der Anzahl an WInkelschritten,
-        die fuer eine anschließende Vorwaertsprojektion.
+        Erstellt einen Schieberegler zur Auswahl der Anzahl an Winkelschritten,
+        die fuer eine anschließende Vorwaertsprojektion verwendet werden.
         
         Parameters
         ----------
@@ -146,8 +147,9 @@ class Gui(QtWidgets.QWidget):
 
         slider = QSlider(Qt.Horizontal)
         slider.setTickPosition(QSlider.TicksBothSides)
-        slider.setTickInterval(15)
+        slider.setTickInterval(10)
         slider.setSingleStep(1)
+       
         vbox = QVBoxLayout()
         vbox.addWidget(slider)
         vbox.addStretch(1)
@@ -234,8 +236,15 @@ class Gui(QtWidgets.QWidget):
     #    plt.figure()
     #    plt.imshow(data_transform)
         linienintegrale = []
-        # verschiedene (Rotations)winkel durchgehen:
-        for alpha in np.linspace(0, 180, 10, endpoint=False):
+        # verschiedene (Rotations)winkel durchgehen
+        # Auswahl Endpunkt je nachdem, was auf der graphischen Oberflaeche
+        # ausgewaehlt wird
+        halfbeam = self.radio1.isChecked()
+        if halfbeam:
+            angle = 180
+        else:
+            angle = 360
+        for alpha in np.linspace(0, angle, 10, endpoint=False):
             self.progress.setValue(alpha+1)
             # Drehung
             data_transform = self.drehung(data_groß, alpha)
@@ -462,9 +471,7 @@ class Gui(QtWidgets.QWidget):
         """
         self.sinogramm_proj = self.sinogramm[:] * np.ones(len(self.laenge_original))
         
-        
-        
-    
+
 def main():
     app = QtWidgets.QApplication(sys.argv)
     ui = Gui()

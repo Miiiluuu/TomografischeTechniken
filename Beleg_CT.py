@@ -15,7 +15,7 @@ from PyQt5 import QtWidgets
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (QFileDialog, QPushButton, QGridLayout,
                              QVBoxLayout, QSlider, QRadioButton, QGroupBox,
-                             QProgressBar, QCheckBox)
+                             QProgressBar, QCheckBox, QLabel)
 import pyqtgraph
 
 
@@ -144,16 +144,25 @@ class Gui(QtWidgets.QWidget):
         None
         """
         groupBox = QGroupBox("Anzahl der Winkelschritte")
+        
+        # Beschriftung
+        self.l1 = QLabel("10")
+        self.l1.setAlignment(Qt.AlignRight)
 
-        slider = QSlider(Qt.Horizontal)
-        slider.setTickPosition(QSlider.TicksBothSides)
-        slider.setTickInterval(10)
-        slider.setSingleStep(1)
-       
+
+        self.slider = QSlider(Qt.Horizontal)
+        self.slider.setTickPosition(QSlider.TicksBothSides)
+        self.slider.setTickInterval(10)
+        self.slider.setSingleStep(1)
+        self.slider.setMinimum(10)
+        self.slider.setMaximum(100)
+        self.slider.setValue(10)
+        
         vbox = QVBoxLayout()
-        vbox.addWidget(slider)
+        vbox.addWidget(self.slider)
         vbox.addStretch(1)
         groupBox.setLayout(vbox)
+        vbox.addWidget(self.l1)
 
         return groupBox
         

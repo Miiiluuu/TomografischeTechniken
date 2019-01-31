@@ -41,6 +41,30 @@ class Window(QWidget):
         groupBox.setLayout(vbox)
 
         return groupBox
+    
+    def __init__(self, playbin, parent):
+        super().__init__(parent)
+        self._playbin = playbin
+        self._state = self.STATE_IDLE
+        self._started = None
+        self._updater = None
+        self._slider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
+        self._elapsed = QtWidgets.QLabel('00:00:00')
+        self._remaining = QtWidgets.QLabel('00:00:00')
+        self._slider.setMinimum(0)
+
+        layout = QtWidgets.QHBoxLayout()
+        layout.setContentsMargins(2, 2, 2, 2)
+        layout.addWidget(self._elapsed)
+        layout.addWidget(self._slider, stretch=1)
+        layout.addWidget(self._remaining)
+        self.setLayout(layout)
+
+        self._slider.sliderPressed.connect(self._startDragging)
+        self._slider.sliderMoved.connect(self._drag)
+        self._slider.sliderReleased.connect(self._stopDragging)
+
+        self._updater = asyncio.get_event_loop().create_task(self._poll()) 
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)

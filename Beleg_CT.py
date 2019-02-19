@@ -253,7 +253,7 @@ class Gui(QtWidgets.QWidget):
             angle = 180
         else:
             angle = 360
-        for alpha in np.linspace(0, angle, 10, endpoint=False):
+        for alpha in np.linspace(0, angle, 30, endpoint=False):
             self.progress.setValue(alpha+1)
             # Drehung
             data_transform = self.drehung(data_groß, alpha)
@@ -271,6 +271,7 @@ class Gui(QtWidgets.QWidget):
 #        plt.imshow(linienintegrale_array)
         # darstellen in img2 wenn auf knopf gedrueckt
         self.img2.setImage(self.sinogramm)
+        # TODO:threading, schneller machen, Drehung interpolieren? 
                 
         
     def saveButtonPress(self):
@@ -464,6 +465,8 @@ class Gui(QtWidgets.QWidget):
                                         np.array([(y_transform + pixel_mitte,
                                                    x_transform + pixel_mitte)]).T)
         return image_transform
+    # TODO: zu viele weiße Punkte bei Sinogramm?
+    # TODO: Kontrast verändern
     
     
     def rueckproj(self):

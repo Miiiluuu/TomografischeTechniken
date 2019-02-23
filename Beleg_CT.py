@@ -15,7 +15,7 @@ from PyQt5 import QtWidgets
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (QFileDialog, QPushButton, QGridLayout,
                              QVBoxLayout, QSlider, QRadioButton, QGroupBox,
-                             QProgressBar, QCheckBox, QLabel)
+                             QProgressBar, QCheckBox, QLabel, QSpinBox)
 import pyqtgraph
 
 
@@ -42,7 +42,7 @@ class Gui(QtWidgets.QWidget):
         self.loadButton.clicked.connect(self.loadButtonPress)
         self.vbox.addWidget(self.loadButton)
         # Knopf zum Erzeugen des Sinogramms
-        # wenn das zuallererst aufgerufen wird Absturz
+        # TODO: wenn das zuallererst aufgerufen wird Absturz, nicht ok
         self.sinoButton = QPushButton("Erstelle Sinogramm")
         self.sinoButton.clicked.connect(self.sinoButtonPress)
         self.vbox.addWidget(self.sinoButton)
@@ -54,14 +54,15 @@ class Gui(QtWidgets.QWidget):
         self.loadsinoButton = QPushButton("Load Sinogramm")
         self.loadsinoButton.clicked.connect(self.loadsinoButtonPress)
         self.vbox.addWidget(self.loadsinoButton)
-        # Hinzufuegen eines SLiders zum Auswaehlen der Winkelschritte
-        self.vbox.addWidget(self.slider())
+        # Hinzufuegen einer SpinBox zum Auswaehlen der Winkelschritte
+        self.vbox.addWidget(self.spindemo())
         # Hinzufuegen einer Progressbar fuer die Vorwaertsprojektion
         self.vbox.addWidget(self.progressbar())
         # Hinzufuegen einer Checkbox 
         self.vbox.addWidget(self.radiobutton())
+        # TODO: einige Buttons in QMenuBar oder QToolBar, QTab? QScrollbar?
         
-        
+        # TODO: Ueberschriften fuer Bilder
         # Hinzufuegen grafischer Bilder zum Layout
         # Bild 1
         self.graphic1 = pyqtgraph.GraphicsLayoutWidget()
@@ -74,7 +75,7 @@ class Gui(QtWidgets.QWidget):
         self.img1.setOpts(axisOrder='row-major')
         self.view1.addItem(self.img1)
         self.grid.addWidget(self.graphic1, 0, 1)
-        
+
         # Bild 2
         self.graphic2 = pyqtgraph.GraphicsLayoutWidget()
         self.view2 = self.graphic2.addViewBox()
@@ -129,43 +130,6 @@ class Gui(QtWidgets.QWidget):
         
         return groupBox
         
-        
-    def slider(self):
-        """
-        Erstellt einen Schieberegler zur Auswahl der Anzahl an Winkelschritten,
-        die fuer eine anschließende Vorwaertsprojektion verwendet werden.
-        
-        Parameters
-        ----------
-        None
-        
-        Return
-        ----------
-        None
-        """
-        groupBox = QGroupBox("Anzahl der Winkelschritte")
-        
-        # Beschriftung
-        self.l1 = QLabel("10")
-        self.l1.setAlignment(Qt.AlignRight)
-
-
-        self.slider = QSlider(Qt.Horizontal)
-        self.slider.setTickPosition(QSlider.TicksBothSides)
-        self.slider.setTickInterval(10)
-        self.slider.setSingleStep(1)
-        self.slider.setMinimum(10)
-        self.slider.setMaximum(100)
-        self.slider.setValue(10)
-        
-        vbox = QVBoxLayout()
-        vbox.addWidget(self.slider)
-        vbox.addStretch(1)
-        groupBox.setLayout(vbox)
-        vbox.addWidget(self.l1)
-
-        return groupBox
-        
     
     def progressbar(self):
         """
@@ -180,12 +144,50 @@ class Gui(QtWidgets.QWidget):
         ----------
         None
         """
-        self.setWindowTitle('bla')
         self.progress = QProgressBar(self)
         self.progress.setMaximum(180)
         
         return self.progress
     
+    
+    def spindemo(self) :
+        """
+        Erstellt eine Spinbox zur Auswahl der Anzahl an Winkelschritten,
+        die fuer eine anschließende Vorwaertsprojektion verwendet werden.
+        
+        Parameters
+        ----------
+        None
+        
+        Return
+        ----------
+        None
+        """
+        # TODO: nachfragen??
+        groupBox = QGroupBox("Anzahl der Winkelschritte")
+        
+        # Beschriftung
+        self.conversation = QLabel("current value:")
+        self.conversation.setAlignment(Qt.AlignCenter)
+        
+        self.spinbox = QSpinBox()
+    
+        # Anhaengen
+        vbox = QVBoxLayout()
+        vbox.addWidget(self.conversation)
+        vbox.addWidget(self.spinbox)
+        self.spinbox.valueChanged.connect(self.valuechange)
+        vbox.addStretch(1)
+        groupBox.setLayout(vbox)
+
+        return groupBox
+        # TODO: was passiert wenn 0 ausgewaehlt ist?
+    
+    
+    def valuechange(self):
+        # TODO: nur int ok?
+        self.l1.setText("current value:"+str(self.spinbox.value()))
+            
         
     def loadButtonPress(self):
         """
@@ -248,12 +250,16 @@ class Gui(QtWidgets.QWidget):
         # verschiedene (Rotations)winkel durchgehen
         # Auswahl Endpunkt je nachdem, was auf der graphischen Oberflaeche
         # ausgewaehlt wird
-        halfbeam = self.radio1.isChecked()
-        if halfbeam:
+        # 180 Grad oder 360 Grad
+        beam = self.radio1.isChecked()
+        if beam:
             angle = 180
         else:
             angle = 360
-        for alpha in np.linspace(0, angle, 30, endpoint=False):
+        # TODO: wie Wert abspeichern?
+        # Anzahl an Winkelschritten
+        anz_grad = self.spinbox.getInt()
+        for alpha in np.linspace(0, angle, anz_grad, endpoint=False):
             self.progress.setValue(alpha+1)
             # Drehung
             data_transform = self.drehung(data_groß, alpha)
@@ -272,7 +278,8 @@ class Gui(QtWidgets.QWidget):
         # darstellen in img2 wenn auf knopf gedrueckt
         self.img2.setImage(self.sinogramm)
         # TODO:threading, schneller machen, Drehung interpolieren? 
-                
+        # TODO: live Erzeugung Sinogramm
+        
         
     def saveButtonPress(self):
         """
@@ -483,6 +490,9 @@ class Gui(QtWidgets.QWidget):
         """
         self.sinogramm_proj = self.sinogramm[:] * np.ones(len(self.laenge_original))
         
+    # TODO: checkbox oder radiobutton: Auswahl gefiltert/ungefiltert
+    # TODO: Combobox: welcher Filter
+
 
 def main():
     app = QtWidgets.QApplication(sys.argv)

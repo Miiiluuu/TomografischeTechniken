@@ -15,7 +15,8 @@ from PyQt5 import QtWidgets
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (QFileDialog, QPushButton, QGridLayout,
                              QVBoxLayout, QSlider, QRadioButton, QGroupBox,
-                             QProgressBar, QCheckBox, QLabel, QSpinBox)
+                             QProgressBar, QCheckBox, QLabel, QSpinBox,
+                             QComboBox)
 import pyqtgraph
 
 
@@ -36,6 +37,7 @@ class Gui(QtWidgets.QWidget):
         self.vbox.addStretch(1)
         
         # (3) Hinzufuegen von Buttons und Aehnlichem
+        # TODO: Benennung aendern
         # OpenButton hinzufuegen
         self.loadButton = QPushButton("Open")
         # TODO: naehere Beschreibung des Buttons mit Cursor drauf?
@@ -54,15 +56,14 @@ class Gui(QtWidgets.QWidget):
         self.loadsinoButton = QPushButton("Load Sinogramm")
         self.loadsinoButton.clicked.connect(self.loadsinoButtonPress)
         self.vbox.addWidget(self.loadsinoButton)
-        # Hinzufuegen einer SpinBox zum Auswaehlen der Winkelschritte
-        self.vbox.addWidget(self.spindemo())
-        # Hinzufuegen einer Progressbar fuer die Vorwaertsprojektion
-        self.vbox.addWidget(self.progressbar())
-        # Hinzufuegen einer Checkbox 
-        self.vbox.addWidget(self.radiobutton())
+        # Hinzufuegen Auswahlmoeglichkeiten fuer Vorwaertsprojektion
+        self.vbox.addLayout(self.choices_vorwaertsproj())
+        # Hinzufuegen Auswahlmoeglichkeiten fuer Rueckprojektion
+        self.vbox.addLayout(self.choices_rueckproj())
         # TODO: einige Buttons in QMenuBar oder QToolBar, QTab? QScrollbar?
         
         # TODO: Ueberschriften fuer Bilder
+        # TODO: Verhaeltnisse Bilder zueinander
         # Hinzufuegen grafischer Bilder zum Layout
         # Bild 1
         self.graphic1 = pyqtgraph.GraphicsLayoutWidget()
@@ -116,6 +117,18 @@ class Gui(QtWidgets.QWidget):
         
         
     def radiobutton(self):
+        """
+        Erstellt RadioButton, zur Auswahl, ob Sinogramm im Vollkreis (360°)
+        oder Halbkreis (180°) berechnet werden soll.
+        
+        Parameters
+        ----------
+        None
+        
+        Return
+        ----------
+        None
+        """
         groupBox = QGroupBox("Projektion im Winkelraum:")
     
         self.radio1 = QRadioButton("180°")
@@ -150,6 +163,7 @@ class Gui(QtWidgets.QWidget):
         return self.progress
     
     
+    # TODO: lieber etwas eingeben?
     def spindemo(self) :
         """
         Erstellt eine Spinbox zur Auswahl der Anzahl an Winkelschritten,
@@ -170,24 +184,137 @@ class Gui(QtWidgets.QWidget):
         self.conversation = QLabel("current value:")
         self.conversation.setAlignment(Qt.AlignCenter)
         
-        self.spinbox = QSpinBox()
+        self.sb = QSpinBox()
     
         # Anhaengen
         vbox = QVBoxLayout()
         vbox.addWidget(self.conversation)
-        vbox.addWidget(self.spinbox)
-        self.spinbox.valueChanged.connect(self.valuechange)
+        vbox.addWidget(self.sb)
+        self.sb.valueChanged.connect(self.valuechange)
         vbox.addStretch(1)
         groupBox.setLayout(vbox)
 
         return groupBox
-        # TODO: was passiert wenn 0 ausgewaehlt ist?
+        # TODO: was passiert wenn 0 ausgewaehlt ist? Wie ok drucken? Anwendung
+        # funktioniert nicht
     
     
+    # TODO: Ueberschrift
+    def choices_vorwaertsproj(self):
+        """
+        Erstellt ein Grid zur Auswahl Parameter fuer Vorwaertsprojektion.
+        
+        Parameters
+        ----------
+        None
+        
+        Return
+        ----------
+        None
+        """
+        grid_vor = QGridLayout()
+        grid_vor.addWidget(self.spindemo(), 0, 0)
+        grid_vor.addWidget(self.radiobutton(), 0, 1)
+        grid_vor.addWidget(self.progressbar(), 1, 0)
+        self.setLayout(grid_vor)
+        
+        return grid_vor
+    
+    
+    # TODO: falsche Form?
     def valuechange(self):
         # TODO: nur int ok?
-        self.l1.setText("current value:"+str(self.spinbox.value()))
+        self.l1.setText("current value:"+str(self.sb.value()))
             
+        
+    def combodemo(self) :
+        """
+        Erstellt eine Combobox zur Auswahl der Filter für gefilterte 
+        Rueckprojektion.
+        
+        Parameters
+        ----------
+        None
+        
+        Return
+        ----------
+        None
+        """
+        self.groupBox_cb = QGroupBox("Filter fuer Rückprojektion")
+        
+        self.cb = QComboBox()
+        
+        self.cb.addItem("Ramp")
+        self.cb.addItem("Shepp-Logan")
+        self.cb.addItems(["Middle"])
+        self.cb.currentIndexChanged.connect(self.selectionchange)
+        
+        # Anhaengen
+        vbox = QVBoxLayout()
+        vbox.addWidget(self.cb)
+        vbox.addStretch(1)
+        self.groupBox_cb.setLayout(vbox)
+
+        return self.groupBox_cb
+    
+        
+    # TODO: falsche Form?
+    def selectionchange(self):
+        currentchoice = self.cb.currentText()
+        
+        
+    # TODO: Ueberschrift
+    # TODO: radiobutton als Funktion
+    def choices_rueckproj(self):
+        """
+        Erstellt ein Grid zur Auswahl Parameter fuer Rueckprojektion.
+        
+        Parameters
+        ----------
+        None
+        
+        Return
+        ----------
+        None
+        """
+        grid_rueck = QGridLayout()
+        grid_rueck.addWidget(self.art_rueckproj(), 0, 0)
+        grid_rueck.addWidget(self.combodemo(), 0, 1)
+        self.setLayout(grid_rueck)
+        
+        return grid_rueck
+        
+        
+    def art_rueckproj(self):
+        """
+        Erstellt RadioButton, zur Auswahl, ob gefilterte oder ungefilterte
+        Rueckprojektion stattfinden soll.
+        
+        Parameters
+        ----------
+        None
+        
+        Return
+        ----------
+        None
+        """
+        groupBox_example = QGroupBox("Art der Rueckprojektion")
+
+        radio1 = QRadioButton("gefiltert")
+        radio2 = QRadioButton("ungefiltert")
+
+        radio1.setChecked(True)
+
+        vbox = QVBoxLayout()
+        vbox.addWidget(radio1)
+        vbox.addWidget(radio2)
+        vbox.addStretch(1)
+        groupBox_example.setLayout(vbox)
+
+        return groupBox_example
+        
+        # TODO: Zsmfassen Parametereinstellung Vorwaertsprojektion
+        
         
     def loadButtonPress(self):
         """
@@ -281,6 +408,7 @@ class Gui(QtWidgets.QWidget):
         # TODO: live Erzeugung Sinogramm
         
         
+    # TODO: erklaeren lassen! Umbenennung Button
     def saveButtonPress(self):
         """
         In einem sich oeffnenden file dialog kann ein Sinogramm
@@ -310,6 +438,7 @@ class Gui(QtWidgets.QWidget):
             np.save(fileName, self.sinogramm_plus_info)
 
 
+    # TODO: erklaeren lassen!
     def loadsinoButtonPress(self):
         """
         Ladet ein (bereits bestehendes) Sinogramm.
@@ -491,7 +620,6 @@ class Gui(QtWidgets.QWidget):
         self.sinogramm_proj = self.sinogramm[:] * np.ones(len(self.laenge_original))
         
     # TODO: checkbox oder radiobutton: Auswahl gefiltert/ungefiltert
-    # TODO: Combobox: welcher Filter
 
 
 def main():

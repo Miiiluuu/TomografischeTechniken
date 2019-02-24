@@ -5,6 +5,9 @@
     bestimmte Parameter eingestellt werden und werden bei grafischen
     Darstellung beruecksichtigt.
 """
+# TODO: Trennung Aufgabe 1 und 2 ( Vor und Rueck)
+# TODO: .show()
+# TODO: uebersichtlicher durch mehr Klassen?
 
 import sys
 
@@ -14,9 +17,9 @@ from scipy.ndimage import map_coordinates
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (QFileDialog, QPushButton, QGridLayout,
-                             QVBoxLayout, QSlider, QRadioButton, QGroupBox,
-                             QProgressBar, QCheckBox, QLabel, QSpinBox,
-                             QComboBox)
+                             QVBoxLayout, QHBoxLayout, QSlider, QRadioButton,
+                             QGroupBox, QProgressBar, QCheckBox, QLabel,
+                             QSpinBox, QComboBox)
 import pyqtgraph
 
 
@@ -32,6 +35,7 @@ class Gui(QtWidgets.QWidget):
         self.setWindowTitle("Wir basteln uns ein CT!")
         
         # (2) VBox erzeugen, bearbeiten und dem Grid hinzufuegen
+        # in VBox kommen alle Buttons, Auswahlmoeglichkeiten uÄ
         self.vbox = QVBoxLayout()
         self.grid.addLayout(self.vbox, 0, 0)
         self.vbox.addStretch(1)
@@ -178,7 +182,7 @@ class Gui(QtWidgets.QWidget):
         None
         """
         # TODO: nachfragen??
-        groupBox = QGroupBox("Anzahl der Winkelschritte")
+        groupBox = QGroupBox("Anzahl der Winkelschritte:")
         
         # Beschriftung
         self.conversation = QLabel("current value:")
@@ -197,12 +201,11 @@ class Gui(QtWidgets.QWidget):
         return groupBox
         # TODO: was passiert wenn 0 ausgewaehlt ist? Wie ok drucken? Anwendung
         # funktioniert nicht
-    
-    
-    # TODO: Ueberschrift
-    def choices_vorwaertsproj(self):
+        
+    # TODO: falsche Form?
+    def valuechange(self):
         """
-        Erstellt ein Grid zur Auswahl Parameter fuer Vorwaertsprojektion.
+        Zur richtigen Ausgabe, aendert Wert in Spinbox.
         
         Parameters
         ----------
@@ -212,19 +215,35 @@ class Gui(QtWidgets.QWidget):
         ----------
         None
         """
-        grid_vor = QGridLayout()
-        grid_vor.addWidget(self.spindemo(), 0, 0)
-        grid_vor.addWidget(self.radiobutton(), 0, 1)
-        grid_vor.addWidget(self.progressbar(), 1, 0)
-        self.setLayout(grid_vor)
-        
-        return grid_vor
-    
-    
-    # TODO: falsche Form?
-    def valuechange(self):
         # TODO: nur int ok?
         self.l1.setText("current value:"+str(self.sb.value()))
+    
+    
+    # TODO: Zsmfassen Parametereinstellung Vorwaertsprojektion
+    # TODO: Ueberschrift
+    def choices_vorwaertsproj(self):
+        """
+        Erstellt eine Uebersicht zur Auswahl Parameter fuer
+        Vorwaertsprojektion.
+        
+        Parameters
+        ----------
+        None
+        
+        Return
+        ----------
+        None
+        """
+        self.hbox_v = QHBoxLayout()
+        self.hbox_v.addWidget(self.spindemo())
+        self.hbox_v.addWidget(self.radiobutton())
+        self.vbox_v = QVBoxLayout()
+        self.vbox_v.addWidget(self.progressbar())
+        self.vbox_v.addLayout(self.hbox_v)
+        self.setLayout(self.vbox_v)
+        # TODO: sind falschrum?
+        
+        return self.vbox_v
             
         
     def combodemo(self) :
@@ -260,14 +279,8 @@ class Gui(QtWidgets.QWidget):
         
     # TODO: falsche Form?
     def selectionchange(self):
-        currentchoice = self.cb.currentText()
-        
-        
-    # TODO: Ueberschrift
-    # TODO: radiobutton als Funktion
-    def choices_rueckproj(self):
         """
-        Erstellt ein Grid zur Auswahl Parameter fuer Rueckprojektion.
+        Abspeichern des aktuell ausgewaehlten Filters.
         
         Parameters
         ----------
@@ -277,13 +290,8 @@ class Gui(QtWidgets.QWidget):
         ----------
         None
         """
-        grid_rueck = QGridLayout()
-        grid_rueck.addWidget(self.art_rueckproj(), 0, 0)
-        grid_rueck.addWidget(self.combodemo(), 0, 1)
-        self.setLayout(grid_rueck)
-        
-        return grid_rueck
-        
+        currentchoice = self.cb.currentText()
+                
         
     def art_rueckproj(self):
         """
@@ -313,9 +321,29 @@ class Gui(QtWidgets.QWidget):
 
         return groupBox_example
         
-        # TODO: Zsmfassen Parametereinstellung Vorwaertsprojektion
         
+    # TODO: Ueberschrift
+    # TODO: radiobutton als Funktion
+    def choices_rueckproj(self):
+        """
+        Erstellt ein Grid zur Auswahl Parameter fuer Rueckprojektion.
         
+        Parameters
+        ----------
+        None
+        
+        Return
+        ----------
+        None
+        """
+        grid_rueck = QGridLayout()
+        grid_rueck.addWidget(self.art_rueckproj(), 0, 0)
+        grid_rueck.addWidget(self.combodemo(), 0, 1)
+        self.setLayout(grid_rueck)
+        
+        return grid_rueck
+        
+    
     def loadButtonPress(self):
         """
         Öffnet file dialog um eine Datei zu laden/grafisch darzustellen.
@@ -618,8 +646,6 @@ class Gui(QtWidgets.QWidget):
         None
         """
         self.sinogramm_proj = self.sinogramm[:] * np.ones(len(self.laenge_original))
-        
-    # TODO: checkbox oder radiobutton: Auswahl gefiltert/ungefiltert
 
 
 def main():

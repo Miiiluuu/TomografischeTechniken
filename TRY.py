@@ -10,32 +10,31 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 
 
-class combodemo(QWidget):
+class tooldemo(QMainWindow):
    def __init__(self, parent = None):
-      super(combodemo, self).__init__(parent)
-      
-      layout = QHBoxLayout()
-      self.cb = QComboBox()
-      self.cb.addItem("C")
-      self.cb.addItem("C++")
-      self.cb.addItems(["Java", "C#", "Python"])
-      self.cb.currentIndexChanged.connect(self.selectionchange)
-
-        
-      layout.addWidget(self.cb)
+      super(tooldemo, self).__init__(parent)
+      layout = QVBoxLayout()
+      tb = self.addToolBar("File")
+		
+      new = QAction(QIcon("new.bmp"),"new",self)
+      tb.addAction(new)
+		
+      open = QAction(QIcon("open.bmp"),"open",self)
+      tb.addAction(open)
+      save = QAction(QIcon("save.bmp"),"save",self)
+      tb.addAction(save)
+      tb.actionTriggered[QAction].connect(self.toolbtnpressed)
       self.setLayout(layout)
-      self.setWindowTitle("combo box demo")
-
-   def selectionchange(self):
-      currentchoice = self.cb.currentText()
-      print(currentchoice)
-
+      self.setWindowTitle("toolbar demo")
+		
+   def toolbtnpressed(self,a):
+      print("pressed tool button is",a.text())
 		
 def main():
    app = QApplication(sys.argv)
-   ex = combodemo()
+   ex = tooldemo()
    ex.show()
    sys.exit(app.exec_())
-
+	
 if __name__ == '__main__':
    main()

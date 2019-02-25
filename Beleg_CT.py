@@ -28,49 +28,136 @@ class Gui(QtWidgets.QWidget):
         super().__init__()
         
         # Layouteinstellungen
-        # (1) Griderzeugung und -bearbeitung
+        # grafische Oberflaeche gestalten
+        # Erzeugung uebergeordnetes Grid, in dem alle grafischen Objekte 
+        # enthalten sind
         self.grid = QGridLayout()
         self.setLayout(self.grid)
         self.grid.setSpacing(10)
         self.setWindowTitle("Wir basteln uns ein CT!")
         
-        # (2) VBox erzeugen, bearbeiten und dem Grid hinzufuegen
-        # in VBox kommen alle Buttons, Auswahlmoeglichkeiten uÄ
-        self.vbox = QVBoxLayout()
-        self.grid.addLayout(self.vbox, 0, 0)
-        self.vbox.addStretch(1)
+        # Erzeugen VBox erzeugen, diese wird dem Grid hinzufuegt
+        # in VBox kommen alle Buttons, Auswahlmoeglichkeiten fuer Parameter uÄ
+        self.vbox_buttons = QVBoxLayout()
+        self.grid.addLayout(self.vbox_buttons, 0, 0)
+        self.vbox_buttons.addStretch(1)
         
-        # (3) Hinzufuegen von Buttons und Aehnlichem
+        # Hinzufuegen von Buttons und Aehnlichem zur VBox in grafischen
+        # Oberflaeche
+        
+        # TODO: einige Buttons in QMenuBar oder QToolBar, QTab? QScrollbar?
         # TODO: Benennung aendern
         # OpenButton hinzufuegen
         self.loadButton = QPushButton("Open")
         # TODO: naehere Beschreibung des Buttons mit Cursor drauf?
         self.loadButton.clicked.connect(self.loadButtonPress)
-        self.vbox.addWidget(self.loadButton)
+        self.vbox_buttons.addWidget(self.loadButton)
         # Knopf zum Erzeugen des Sinogramms
         # TODO: wenn das zuallererst aufgerufen wird Absturz, nicht ok
         self.sinoButton = QPushButton("Erstelle Sinogramm")
         self.sinoButton.clicked.connect(self.sinoButtonPress)
-        self.vbox.addWidget(self.sinoButton)
+        self.vbox_buttons.addWidget(self.sinoButton)
         # SaveButton hinzufuegen
         self.saveButton = QPushButton("Save")
         self.saveButton.clicked.connect(self.saveButtonPress)
-        self.vbox.addWidget(self.saveButton)
+        self.vbox_buttons.addWidget(self.saveButton)
         # Knopf zum Laden des Sinogramms
         self.loadsinoButton = QPushButton("Load Sinogramm")
         self.loadsinoButton.clicked.connect(self.loadsinoButtonPress)
-        self.vbox.addWidget(self.loadsinoButton)
-        # Hinzufuegen Auswahlmoeglichkeiten fuer Vorwaertsprojektion
-        self.vbox.addLayout(self.choices_vorwaertsproj())
-        # Hinzufuegen Auswahlmoeglichkeiten fuer Rueckprojektion
-        self.vbox.addLayout(self.choices_rueckproj())
-        # TODO: einige Buttons in QMenuBar oder QToolBar, QTab? QScrollbar?
+        self.vbox_buttons.addWidget(self.loadsinoButton)
+        # RueckprojectionButton hinzufuegen
+        self.rueckButton = QPushButton("Rückwärtsprojektion")
+        # TODO: naehere Beschreibung des Buttons mit Cursor drauf?
+        self.rueckButton.clicked.connect(self.rueckButtonPress)
+        self.vbox_buttons.addWidget(self.rueckButton)
+        # ClearButton hinzufuegen
+        self.clearButton = QPushButton("Clear")
+        # TODO: naehere Beschreibung des Buttons mit Cursor drauf?
+        self.clearButton.clicked.connect(self.clearButtonPress)
+        self.vbox_buttons.addWidget(self.clearButton)
         
-        # TODO: Ueberschriften fuer Bilder
+        # Auswahlmoeglichkeiten fuer Vorwaertsprojektion
+        # ist Uebersicht zur Auswahl Parameter fuer Vorwaertsprojektion
+        # es wird HBox erzeugt
+        self.hbox_v = QHBoxLayout()
+        # Hinzufuegen zum Layout (VBox)
+        self.vbox_buttons.addLayout(self.hbox_v)
+        # erstellt RadioButton, zur Auswahl, ob Sinogramm im Vollkreis (360°)
+        # oder Halbkreis (180°) berechnet werden soll
+        self.groupBox_angle = QGroupBox("Projektion im Winkelraum:")
+        self.radio180 = QRadioButton("180°")
+        self.radio360 = QRadioButton("360°")
+        self.radio180.setChecked(True)
+        self.vbox_angle = QVBoxLayout()
+        self.vbox_angle.addWidget(self.radio180)
+        self.vbox_angle.addWidget(self.radio360)
+        self.vbox_angle.addStretch(1)
+        self.groupBox_angle.setLayout(self.vbox_angle)
+        self.hbox_v.addWidget(self.groupBox_angle)
+        # erstellt SpinBox zur Auswahl der Anzahl an Winkelschritten,
+        # die fuer eine anschließende Vorwaertsprojektion verwendet werden
+        self.groupBox_anglesteps = QGroupBox("Anzahl der Winkelschritte:")
+        self.sb_anglesteps = QSpinBox()
+        self.sb_anglesteps.setValue(30)
+        self.sb_anglesteps.setMinimum(10)
+        self.sb_anglesteps.setMaximum(500)
+        self.sb_anglesteps.setSingleStep(10)
+        self.vbox_anglesteps = QVBoxLayout()
+        self.vbox_anglesteps.addWidget(self.sb_anglesteps)
+        self.groupBox_anglesteps.setLayout(self.vbox_anglesteps)
+        self.hbox_v.addWidget(self.groupBox_anglesteps)
+    
+        # erstellt eine Progressbar, welche den Fortschritt in der
+        # Vorwaertsprojektion (des Sinogramms) darstellt.
+        self.progress_sino = QProgressBar()
+        self.progress_sino.setMaximum(180)
+        # Hinzufuegen zum Layout (VBox)
+        self.vbox_buttons.addWidget(self.progress_sino)
+    
+        # Auswahlmoeglichkeiten fuer Rueckwaertsprojektion
+        # ist Uebersicht zur Auswahl Parameter fuer Rueckwaertsprojektion
+        # es wird HBox erzeugt
+        self.hbox_r = QHBoxLayout()
+        # Hinzufuegen zum Layout (VBox)
+        self.vbox_buttons.addLayout(self.hbox_r)                                                                    
+        # erstellt RadioButton, zur Auswahl, ob gefilterte oder ungefilterte
+        # Rueckprojektion stattfinden soll
+        self.groupBox_projection = QGroupBox("Projektion im Winkelraum:")
+        self.radio_mit = QRadioButton("gefiltert")
+        self.radio_ohne = QRadioButton("ungefiltert")
+        self.radio_mit.setChecked(True)
+        self.vbox_projection = QVBoxLayout()
+        self.vbox_projection.addWidget(self.radio_mit)
+        self.vbox_projection.addWidget(self.radio_ohne)
+        self.vbox_projection.addStretch(1)
+        self.groupBox_projection.setLayout(self.vbox_projection)
+        self.hbox_r.addWidget(self.groupBox_projection)
+        # erstellt ComboBox zur Auswahl der Filter für gefilterte 
+        # Rueckprojektion
+        self.groupBox_cb = QGroupBox("Filter fuer Rückprojektion:")
+        self.cb_filter = QComboBox()
+        self.cb_filter.addItem("None")
+        self.cb_filter.addItem("Ramp")
+        self.cb_filter.addItem("Shepp-Logan")
+        self.cb_filter.addItems(["Middle"])
+        # abspeichern des aktuell ausgewaehlten Filters
+        currentchoice = self.cb_filter.currentText()
+        self.vbox_cb = QVBoxLayout()
+        self.vbox_cb.addWidget(self.cb_filter)
+        self.groupBox_cb.setLayout(self.vbox_cb)
+        self.hbox_r.addWidget(self.groupBox_cb) 
+
         # TODO: Verhaeltnisse Bilder zueinander
         # Hinzufuegen grafischer Bilder zum Layout
         # Bild 1
+        self.vbox_img1 = QVBoxLayout()
+        label_img1 = QLabel("Originalbild")
+        font = label_img1.font()
+        font.setPointSize(10)
+        label_img1.setFont(font)
+        self.vbox_img1.addWidget(label_img1)
         self.graphic1 = pyqtgraph.GraphicsLayoutWidget()
+        self.vbox_img1.addWidget(self.graphic1)
         self.view1 = self.graphic1.addViewBox()
         self.view1.setAspectLocked(True)
         # damit verhalten wie Mathplotlib
@@ -79,10 +166,16 @@ class Gui(QtWidgets.QWidget):
         # damit verhalten wie Mathplotlib
         self.img1.setOpts(axisOrder='row-major')
         self.view1.addItem(self.img1)
-        self.grid.addWidget(self.graphic1, 0, 1)
+        self.grid.addLayout(self.vbox_img1, 0, 1)
+
 
         # Bild 2
+        self.vbox_img2 = QVBoxLayout()
+        label_img2 = QLabel("Sinogramm")
+        label_img2.setFont(font)
+        self.vbox_img2.addWidget(label_img2)
         self.graphic2 = pyqtgraph.GraphicsLayoutWidget()
+        self.vbox_img2.addWidget(self.graphic2)
         self.view2 = self.graphic2.addViewBox()
         self.view2.setAspectLocked(True)
         # damit verhalten wie Mathplotlib
@@ -91,10 +184,15 @@ class Gui(QtWidgets.QWidget):
         # damit verhalten wie Mathplotlib
         self.img2.setOpts(axisOrder='row-major')
         self.view2.addItem(self.img2)
-        self.grid.addWidget(self.graphic2, 0, 2)
+        self.grid.addLayout(self.vbox_img2, 0, 2)
         
         # Bild 3
+        self.vbox_img3 = QVBoxLayout()
+        label_img3 = QLabel("Sinogramm")
+        label_img3.setFont(font)
+        self.vbox_img3.addWidget(label_img3)
         self.graphic3 = pyqtgraph.GraphicsLayoutWidget()
+        self.vbox_img3.addWidget(self.graphic3)
         self.view3 = self.graphic3.addViewBox()
         self.view3.setAspectLocked(True)
         # damit verhalten wie Mathplotlib
@@ -103,11 +201,16 @@ class Gui(QtWidgets.QWidget):
         # damit verhalten wie Mathplotlib
         self.img3.setOpts(axisOrder='row-major')
         self.view3.addItem(self.img3)
-        self.grid.addWidget(self.graphic3, 1, 1)
+        self.grid.addLayout(self.vbox_img3, 1, 1)
         self.img3.setImage(np.eye(5))
         
         # Bild 4
+        self.vbox_img4 = QVBoxLayout()
+        label_img4 = QLabel("Sinogramm")
+        label_img4.setFont(font)
+        self.vbox_img4.addWidget(label_img4)
         self.graphic4 = pyqtgraph.GraphicsLayoutWidget()
+        self.vbox_img4.addWidget(self.graphic4)
         self.view4 = self.graphic4.addViewBox()
         self.view4.setAspectLocked(True)
         # damit verhalten wie Mathplotlib
@@ -116,14 +219,12 @@ class Gui(QtWidgets.QWidget):
         # damit verhalten wie Mathplotlib
         self.img4.setOpts(axisOrder='row-major')
         self.view4.addItem(self.img4)
-        self.grid.addWidget(self.graphic4, 1, 2)
+        self.grid.addLayout(self.vbox_img4, 1, 2)
         self.img4.setImage(np.eye(5))
         
-        
-    def radiobutton(self):
+    def clearButtonPress(self):
         """
-        Erstellt RadioButton, zur Auswahl, ob Sinogramm im Vollkreis (360°)
-        oder Halbkreis (180°) berechnet werden soll.
+        Löscht alle Bilder.
         
         Parameters
         ----------
@@ -133,45 +234,11 @@ class Gui(QtWidgets.QWidget):
         ----------
         None
         """
-        groupBox = QGroupBox("Projektion im Winkelraum:")
-    
-        self.radio1 = QRadioButton("180°")
-        self.radio2 = QRadioButton("360°")
-        self.radio1.setChecked(True)
-        
-        vbox = QVBoxLayout()
-        vbox.addWidget(self.radio1)
-        vbox.addWidget(self.radio2)
-        vbox.addStretch(1)
-        groupBox.setLayout(vbox)
-        
-        return groupBox
-        
-    
-    def progressbar(self):
-        """
-        Erstellt eine Progressbar, welche den Fortschritt im Erstellen
-        der Vorwaertsprojektion (des Sinogramms) darstellt.
-        
-        Parameters
-        ----------
-        None
-        
-        Return
-        ----------
-        None
-        """
-        self.progress = QProgressBar(self)
-        self.progress.setMaximum(180)
-        
-        return self.progress
     
     
-    # TODO: lieber etwas eingeben?
-    def spindemo(self) :
+    def rueckButtonPress(self):
         """
-        Erstellt eine Spinbox zur Auswahl der Anzahl an Winkelschritten,
-        die fuer eine anschließende Vorwaertsprojektion verwendet werden.
+        (ungefilterte) Rueckprojektion.
         
         Parameters
         ----------
@@ -181,168 +248,18 @@ class Gui(QtWidgets.QWidget):
         ----------
         None
         """
-        # TODO: nachfragen??
-        groupBox = QGroupBox("Anzahl der Winkelschritte:")
-        
-        # Beschriftung
-        self.conversation = QLabel("current value:")
-        self.conversation.setAlignment(Qt.AlignCenter)
-        
-        self.sb = QSpinBox()
-    
-        # Anhaengen
-        vbox = QVBoxLayout()
-        vbox.addWidget(self.conversation)
-        vbox.addWidget(self.sb)
-        self.sb.valueChanged.connect(self.valuechange)
-        vbox.addStretch(1)
-        groupBox.setLayout(vbox)
-
-        return groupBox
-        # TODO: was passiert wenn 0 ausgewaehlt ist? Wie ok drucken? Anwendung
-        # funktioniert nicht
-        
-    # TODO: falsche Form?
-    def valuechange(self):
-        """
-        Zur richtigen Ausgabe, aendert Wert in Spinbox.
-        
-        Parameters
-        ----------
-        None
-        
-        Return
-        ----------
-        None
-        """
-        # TODO: nur int ok?
-        self.l1.setText("current value:"+str(self.sb.value()))
-    
-    
-    # TODO: Zsmfassen Parametereinstellung Vorwaertsprojektion
-    # TODO: Ueberschrift
-    def choices_vorwaertsproj(self):
-        """
-        Erstellt eine Uebersicht zur Auswahl Parameter fuer
-        Vorwaertsprojektion.
-        
-        Parameters
-        ----------
-        None
-        
-        Return
-        ----------
-        None
-        """
-        self.hbox_v = QHBoxLayout()
-        self.hbox_v.addWidget(self.spindemo())
-        self.hbox_v.addWidget(self.radiobutton())
-        self.vbox_v = QVBoxLayout()
-        self.vbox_v.addWidget(self.progressbar())
-        self.vbox_v.addLayout(self.hbox_v)
-        self.setLayout(self.vbox_v)
-        # TODO: sind falschrum?
-        
-        return self.vbox_v
-            
-        
-    def combodemo(self) :
-        """
-        Erstellt eine Combobox zur Auswahl der Filter für gefilterte 
-        Rueckprojektion.
-        
-        Parameters
-        ----------
-        None
-        
-        Return
-        ----------
-        None
-        """
-        self.groupBox_cb = QGroupBox("Filter fuer Rückprojektion")
-        
-        self.cb = QComboBox()
-        
-        self.cb.addItem("Ramp")
-        self.cb.addItem("Shepp-Logan")
-        self.cb.addItems(["Middle"])
-        self.cb.currentIndexChanged.connect(self.selectionchange)
-        
-        # Anhaengen
-        vbox = QVBoxLayout()
-        vbox.addWidget(self.cb)
-        vbox.addStretch(1)
-        self.groupBox_cb.setLayout(vbox)
-
-        return self.groupBox_cb
-    
-        
-    # TODO: falsche Form?
-    def selectionchange(self):
-        """
-        Abspeichern des aktuell ausgewaehlten Filters.
-        
-        Parameters
-        ----------
-        None
-        
-        Return
-        ----------
-        None
-        """
-        currentchoice = self.cb.currentText()
-                
-        
-    def art_rueckproj(self):
-        """
-        Erstellt RadioButton, zur Auswahl, ob gefilterte oder ungefilterte
-        Rueckprojektion stattfinden soll.
-        
-        Parameters
-        ----------
-        None
-        
-        Return
-        ----------
-        None
-        """
-        groupBox_example = QGroupBox("Art der Rueckprojektion")
-
-        radio1 = QRadioButton("gefiltert")
-        radio2 = QRadioButton("ungefiltert")
-
-        radio1.setChecked(True)
-
-        vbox = QVBoxLayout()
-        vbox.addWidget(radio1)
-        vbox.addWidget(radio2)
-        vbox.addStretch(1)
-        groupBox_example.setLayout(vbox)
-
-        return groupBox_example
-        
-        
-    # TODO: Ueberschrift
-    # TODO: radiobutton als Funktion
-    def choices_rueckproj(self):
-        """
-        Erstellt ein Grid zur Auswahl Parameter fuer Rueckprojektion.
-        
-        Parameters
-        ----------
-        None
-        
-        Return
-        ----------
-        None
-        """
-        grid_rueck = QGridLayout()
-        grid_rueck.addWidget(self.art_rueckproj(), 0, 0)
-        grid_rueck.addWidget(self.combodemo(), 0, 1)
-        self.setLayout(grid_rueck)
-        
-        return grid_rueck
-        
+        print("a")
+        alpha_r = np.linspace(0, self.winkel_max, len(self.sinogramm), endpoint=False)
+        self.image_r = np.zeros((len(self.sinogramm[0]), len(self.sinogramm[0])))
+        for i in range(len(self.sinogramm)):
+            print(i)
+            sino2d = self.sinogramm[i] * np.ones_like(self.image_r)
+            # Drehung
+            sino2d_transform = self.drehung(sino2d, -alpha_r[i])
+            self.image_r += sino2d_transform
+        # Rückprojektion darstellen auf grafischer Oberflaeche
+        self.img3.setImage(self.image_r)
+        print("b")
     
     def loadButtonPress(self):
         """
@@ -389,49 +306,33 @@ class Gui(QtWidgets.QWidget):
         ----------
         None
         """
-    #    # Einlesen der Daten
-    #    data = np.load("Bilder/dreiNadeln32.npy")
-        # Kontrolldarstellung
-#        plt.figure()
-#        plt.imshow(data)
+        self.laenge_original = len(self.data)
         # Vorverarbeitung fuer Drehung
         data_groß = self.drehung_vorverarbeitung(self.data)
-    #    # Drehung um 90°
-    #    data_transform = drehung(data_groß, 90)
-    #    # Kontrolldarstellung gedrehtes Bild
-    #    plt.figure()
-    #    plt.imshow(data_transform)
         linienintegrale = []
         # verschiedene (Rotations)winkel durchgehen
         # Auswahl Endpunkt je nachdem, was auf der graphischen Oberflaeche
         # ausgewaehlt wird
         # 180 Grad oder 360 Grad
-        beam = self.radio1.isChecked()
-        if beam:
-            angle = 180
+        angle = self.radio180.isChecked()
+        if angle:
+            angle_value = 180
         else:
-            angle = 360
-        # TODO: wie Wert abspeichern?
+            angle_value = 360
         # Anzahl an Winkelschritten
-        anz_grad = self.spinbox.getInt()
-        for alpha in np.linspace(0, angle, anz_grad, endpoint=False):
-            self.progress.setValue(alpha+1)
+        angle_steps = self.sb_anglesteps.value()
+        for alpha in np.linspace(0, angle_value, angle_steps, endpoint=False):
+            self.progress_sino.setValue(alpha+1)
             # Drehung
             data_transform = self.drehung(data_groß, alpha)
-            # Bildung von Linienintegralen fuer einzelnen Rotationswinkel alpha:
-            # einzelnen Zeilenwerte (ausgehend von Koerperoberflaeche Bauch zu
-            # Ruecken) aufaddieren
+            # Bildung von Linienintegralen fuer einzelnen Rotationswinkel
             linienintegral = np.sum(data_transform, axis=0)
-            #print(linienintegral)
-            # einzelnen Linienintegrale abspeichern in Liste
             linienintegrale.append(linienintegral)
-        self.progress.setValue(self.progress.maximum())
-        # Sinogramm darstellen
+        self.progress_sino.setValue(self.progress_sino.maximum())
+        # Sinogramm darstellen auf grafischer Oberflaeche
         self.sinogramm = np.array(linienintegrale)
-#        plt.figure()
-#        plt.imshow(linienintegrale_array)
-        # darstellen in img2 wenn auf knopf gedrueckt
         self.img2.setImage(self.sinogramm)
+        self.winkel_max = angle_value
         # TODO:threading, schneller machen, Drehung interpolieren? 
         # TODO: live Erzeugung Sinogramm
         
@@ -462,14 +363,15 @@ class Gui(QtWidgets.QWidget):
         # TODO: was passiert wenn es kein File gibt? bzw man etwas
         # unzureichendes laedt? Kernel died!
         if fileName:
-            # Einlesen der Daten
+            # Speichern der Daten
             np.save(fileName, self.sinogramm_plus_info)
 
 
     # TODO: erklaeren lassen!
     def loadsinoButtonPress(self):
         """
-        Ladet ein (bereits bestehendes) Sinogramm.
+        Ladet ein (bereits bestehendes) Sinogramm in einem sich oeffnenden
+        file dialog.
         
         Parameters
         ----------
@@ -632,21 +534,9 @@ class Gui(QtWidgets.QWidget):
     # TODO: zu viele weiße Punkte bei Sinogramm?
     # TODO: Kontrast verändern
     
-    
-    def rueckproj(self):
-        """
-        (ungefilterte) Rueckprojektion.
-        
-        Parameters
-        ----------
-        None
-        
-        Return
-        ----------
-        None
-        """
-        self.sinogramm_proj = self.sinogramm[:] * np.ones(len(self.laenge_original))
 
+        
+                
 
 def main():
     app = QtWidgets.QApplication(sys.argv)

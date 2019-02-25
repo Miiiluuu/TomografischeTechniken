@@ -42,6 +42,10 @@ class Gui(QtWidgets.QWidget):
         self.grid.addLayout(self.vbox_buttons, 0, 0)
         self.vbox_buttons.addStretch(1)
         
+        self.vbox_buttons2 = QVBoxLayout()
+        self.grid.addLayout(self.vbox_buttons2, 1, 0)
+        self.vbox_buttons2.addStretch(1)
+        
         # Hinzufuegen von Buttons und Aehnlichem zur VBox in grafischen
         # Oberflaeche
         
@@ -119,7 +123,7 @@ class Gui(QtWidgets.QWidget):
         # es wird HBox erzeugt
         self.hbox_r = QHBoxLayout()
         # Hinzufuegen zum Layout (VBox)
-        self.vbox_buttons.addLayout(self.hbox_r)                                                                    
+        self.vbox_buttons2.addLayout(self.hbox_r)                                                                    
         # erstellt RadioButton, zur Auswahl, ob gefilterte oder ungefilterte
         # Rueckprojektion stattfinden soll
         self.groupBox_projection = QGroupBox("Projektion im Winkelraum:")
@@ -248,19 +252,45 @@ class Gui(QtWidgets.QWidget):
         ----------
         None
         """
+        self.img3.clear()
         print("a")
         alpha_r = np.linspace(0, self.winkel_max, len(self.sinogramm), endpoint=False)
         self.image_r = np.zeros((len(self.sinogramm[0]), len(self.sinogramm[0])))
-        for i in range(len(self.sinogramm)):
+        filterart = self.radio_mit.isChecked()
+        # Anwendung Filter vor Rueckprojektion
+        self.sinogramm_filter = np.copy(self.sinogramm)
+        if filterart:
+            # Erstellung Rampfilter
+            ramp = np.abs(np.fft.fftshift(np.fft.fftfreq(len(self.sinogramm[0]))))
+            for i in range(len(self.sinogramm)):
+                # Fouriertransformation erstellen
+                fourier_image = np.fft.fft(self.sinogramm[i])
+                fourier_image = np.fft.fftshift(fourier_image)
+                # Anwenden des Filters auf Bild
+                # Multiplikation im Frequenzraum
+                fourier_gefiltert = fourier_image * ramp
+                # Bild zurueckshiften
+                fourier_gefiltert = np.fft.ifftshift(fourier_gefiltert)
+                # Ruecktransformation Frequenz- in Ortsraum
+                self.sinogramm_filter[i] = np.fft.ifft(fourier_gefiltert)
+        alpha_r = np.linspace(0, self.winkel_max, len(self.sinogramm_filter), endpoint=False)
+        self.image_r = np.zeros((len(self.sinogramm_filter[0]), len(self.sinogramm_filter[0])))
+        for i in range(len(self.sinogramm_filter)):
             print(i)
-            sino2d = self.sinogramm[i] * np.ones_like(self.image_r)
+            sino2d = self.sinogramm_filter[i] * np.ones_like(self.image_r)
             # Drehung
             sino2d_transform = self.drehung(sino2d, -alpha_r[i])
             self.image_r += sino2d_transform
+        self.self_image_r = self.image_r[self.laenge_original:self.laenge_original+1,
+                     self.laenge_original:self.laenge_original+1]
         # Rückprojektion darstellen auf grafischer Oberflaeche
         self.img3.setImage(self.image_r)
         print("b")
     
+            
+            
+            
+            
     def loadButtonPress(self):
         """
         Öffnet file dialog um eine Datei zu laden/grafisch darzustellen.
@@ -492,6 +522,7 @@ class Gui(QtWidgets.QWidget):
         transform = self.drehmatrix(grad)
         # Anlegen Null-Array
         image_transform = np.zeros_like(image)
+        print(np.shape(image_transform))
         # Schleife:
         # jeden Pixel einzeln durchgehen, auf diesem Drehmatrix anwenden
         # und neue rotierte Koordinaten berechnen
@@ -500,37 +531,32 @@ class Gui(QtWidgets.QWidget):
         # des Koordinatensystems in die Mitte des Bildes gelegt werden
         # (ansonsten Drehung um obere linke Ecke des Bildes)
         # Pixel, bei dem Mitte des Koordinaensystems liegt:
-        pixel_mitte = len(image) // 2
+        
+        pixel_mitte = len(image) // 2 
         # TODO: mitte perfekt runden (auf ganze Zahlen) Jetzt ist es vllt nicht
         # immer exakt die Mitte des Koordinatensystems?
     #    koord_rotate = []
-        for x in range(-pixel_mitte, pixel_mitte):
-            for y in range(-pixel_mitte, pixel_mitte):
-                # Rotationsmatrix auf alle x-Werte anwenden
-                koord_xy_transform = (transform @ np.array([x, y, 1]))
-                x_transform = np.int_(np.round(koord_xy_transform[0]))
-                y_transform = np.int_(np.round(koord_xy_transform[1]))
-                # Pixel des Null-Arrays (image_transform) auffuellen:
-                # Pruefen, ob rotierter Wert innerhalb Bereich Originalbild
-                # vorkommt
-                # wenn Bedingung erfuellt existieren Grauwerte im Originalbild,
-                # die ins rotierte Bild an der richtigen Stelle uebernommen werden
-                # (ansonsten Nullen an dieser Stelle)
-                # Addieren von 128 (pixel_quadrant), um Array nicht mit
-                # negativen Indices anzusprechen (wuerde falsche Werte liefern)
-                # RandNullen werden abgeschnitten, ist egal
-                if (-pixel_mitte <= x_transform < pixel_mitte) and \
-                   (-pixel_mitte <= y_transform < pixel_mitte):
-    #                koord_rotate.append((x_transform + pixel_mitte,
-    #                                     y_transform + pixel_mitte))
-                    # Addieren von 128 (pixel_mitte), um Array nicht mit
-                    # negativen Indices anzusprechen (wuerde falsche Werte liefern)
-                    # map coordinates fier Grauwertapproximation?
-                    image_transform[y + pixel_mitte, x + pixel_mitte] = \
-                        map_coordinates(image,
-                                        np.array([(y_transform + pixel_mitte,
-                                                   x_transform + pixel_mitte)]).T)
+        if len(image_transform) %2 == 0: 
+            x = np.arange(-pixel_mitte, pixel_mitte)
+            y = np.arange(-pixel_mitte, pixel_mitte)
+        else:
+            x = np.arange(-pixel_mitte, pixel_mitte+1)
+            y = np.arange(-pixel_mitte, pixel_mitte+1)
+        x, y = np.meshgrid(x, y)
+        print(np.shape(x))
+        koord_xy_transform = (np.array([x, y, np.ones_like(x)]).T @ transform).T
+        print(np.shape(koord_xy_transform)) 
+        x_transform = (koord_xy_transform[0])
+        y_transform = (koord_xy_transform[1])
+        bed1 = (-pixel_mitte<=x_transform)*(x_transform<pixel_mitte)
+        bed2 = (-pixel_mitte<=y_transform)*(y_transform<pixel_mitte)
+        bed = bed1 * bed2
+        print(np.shape(bed))
+        image_transform[bed] = \
+                        map_coordinates(image, np.array([(y_transform[bed] + pixel_mitte),
+                                                         (x_transform[bed] + pixel_mitte)]))
         return image_transform
+        
     # TODO: zu viele weiße Punkte bei Sinogramm?
     # TODO: Kontrast verändern
     
@@ -557,4 +583,6 @@ if __name__ == "__main__":
     # TODO: ProgressBar
     # TODO: funktioniert nicht mit Windowskonsole?
     
+    
+    # TODO: spacer
     

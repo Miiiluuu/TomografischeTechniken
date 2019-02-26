@@ -13,15 +13,140 @@ import sys
 
 import numpy as np
 import matplotlib.pyplot as plt
+from PyQt5 import QtCore
 from scipy.ndimage import map_coordinates
 from PyQt5 import QtWidgets
-from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (QFileDialog, QPushButton, QGridLayout,
                              QVBoxLayout, QHBoxLayout, QSlider, QRadioButton,
                              QGroupBox, QProgressBar, QCheckBox, QLabel,
                              QSpinBox, QComboBox)
 import pyqtgraph
 
+
+def drehmatrix(grad):
+    """ Erzeugt eine Drehmatrix.
+
+        Parameter:
+        ----------
+        grad: Angabe der Drehung in Grad (im positivem Drehsinne) in Grad.
+    """
+    # Umrechnung Winkel in Bogenmaß
+    grad_rad = np.radians(grad)
+    # Drehmatrix in homogenen Koordinaten
+    dreh = np.array([[np.cos(grad_rad), np.sin(grad_rad), 0],
+                     [-np.sin(grad_rad), np.cos(grad_rad), 0], [0, 0, 1]])
+    # Matrizen invertieren, da Transformation im positiven Sinn
+    dreh = np.linalg.inv(dreh)
+    return dreh
+
+
+def drehung_vorverarbeitung(image):
+    """ Fuer eine anschließende Drehung muessen am Rande des Originalbild
+        Nullen hinzugefuegt werden, um eine anschließende verlustlose Drehung
+        des Bildes zu ermoeglichen (es sollen keine gefuellten Werte des
+        Originalbildes abgeschnitten werden, nur Nullen).
+
+        Parameter:
+        ----------
+        image: Array, Eingabewerte.
+
+        Skizze zur Verdeutlichung:
+
+                            c
+          +--------------------------------------+
+          |                                      |
+          |                 a                    |
+          |    +----------------------------+    |
+          |    |                            |    +---------->  mit Nullen
+          |    |                            |    |             gefuellter
+          |    |                            |    |             Rand
+          |    |                            |    |
+          |    |                            |    |
+        c |  a |                            | a  | c
+          |    |                            |    |
+          |    |                            |    |
+          |    |                            |    |
+          |    |                            |    |
+          |    |                            +------------>   Originalbild
+          |    |                            |    |
+          |    |                            |    |
+          |    +----------------------------+    |
+          |                 a                    |
+          |                                      |
+          +--------------------------------------+
+                            c
+    """
+    # Seitenlaenge quadrat. Matrix (der Eingangswerte) (a)
+    laenge_original = len(image)
+    # Wie groß muss vergroeßertes Bild sein fuer anschließende verlustfreie
+    # Drehung? (nach Satz des Pythagoras berechnet)
+    # (auf)runden und Integer damit keine halben Pixel als Ergebnis erhalten
+    # werden (c)
+    c = np.int(np.ceil(np.sqrt(2) * laenge_original))
+    # Pruefen, ob Originalsbild ueberhaupt mittig reingelegt werden kann:
+    b = c - laenge_original
+    # ist b eine ungerade Zahl, dann vergroeßere c um Eins, damit b im
+    # anschließenden gerade Zahl ist
+    if b % 2 == 1:
+        c += 1
+        b = c - laenge_original
+    # ansonsten ist b gerade und Originalbild kann mittig reingelegt werden
+    # Anlegen eines (groeßeren) Arrays, indem Originalbild anschließend
+    # (mittig!!) gespeichert wird
+    image_groß = np.zeros((c, c))
+    # nun wird vergroeßertes Bild ins Originalbild gelegt
+    image_groß[np.int(b / 2):laenge_original + np.int(b / 2), np.int(b / 2):laenge_original + np.int(b / 2)] = image
+    # oder mit b//2 (rundet zwar ab, aber b kann nur ganze Zahl sein)
+    return image_groß
+
+
+def drehung(image, grad):
+    """ Drehung eines Bildes in positivem Drehsinne.
+
+        Parameter:
+        ----------
+        image: Array, Eingabewerte.
+
+        transform: Transformationsmatrix, fuehrt Drehung (im positiven Sinn)
+        durch.
+    """
+    # Erzeugen einer Drehmatrix mit gewaehltem Winkel
+    transform = drehmatrix(grad)
+    # Anlegen Null-Array
+    image_transform = np.zeros_like(image)
+    print(np.shape(image_transform))
+    # Schleife:
+    # jeden Pixel einzeln durchgehen, auf diesem Drehmatrix anwenden
+    # und neue rotierte Koordinaten berechnen
+    # Rotation mit Drehmatrix bezieht sich auf Nullpunkt des Koordinatensystems
+    # das heißt fuer eine Drehung um die Mitte des Bildes muss der Nullpunkt
+    # des Koordinatensystems in die Mitte des Bildes gelegt werden
+    # (ansonsten Drehung um obere linke Ecke des Bildes)
+    # Pixel, bei dem Mitte des Koordinaensystems liegt:
+
+    pixel_mitte = len(image) // 2
+    # TODO: mitte perfekt runden (auf ganze Zahlen) Jetzt ist es vllt nicht
+    # immer exakt die Mitte des Koordinatensystems?
+    if len(image_transform) % 2 == 0:
+        x = np.arange(-pixel_mitte, pixel_mitte)
+        y = np.arange(-pixel_mitte, pixel_mitte)
+    else:
+        x = np.arange(-pixel_mitte, pixel_mitte + 1)
+        y = np.arange(-pixel_mitte, pixel_mitte + 1)
+    x, y = np.meshgrid(x, y)
+    #print(np.shape(x))
+    koord_xy_transform = (np.array([x, y, np.ones_like(x)]).T @ transform).T
+    #print(np.shape(koord_xy_transform))
+    x_transform = (koord_xy_transform[0])
+    y_transform = (koord_xy_transform[1])
+    bed1 = (-pixel_mitte <= x_transform) * (x_transform < pixel_mitte)
+    bed2 = (-pixel_mitte <= y_transform) * (y_transform < pixel_mitte)
+    bed = bed1 * bed2
+    #print(np.shape(bed))
+    image_transform[bed] = \
+        map_coordinates(image, np.array([(y_transform[bed] + pixel_mitte),
+                                         (x_transform[bed] + pixel_mitte)]))
+    return image_transform
 
 class Gui(QtWidgets.QWidget):
     def __init__(self):
@@ -289,7 +414,7 @@ class Gui(QtWidgets.QWidget):
         for i in range(len(self.sinogramm_filter)):
             sino2d = self.sinogramm_filter[i] * np.ones_like(self.image_r)
             # Drehung
-            sino2d_transform = self.drehung(sino2d, -alpha_r[i])
+            sino2d_transform = drehung(sino2d, -alpha_r[i])
             self.image_r += sino2d_transform
         self.self_image_r = self.image_r[self.laenge_original:self.laenge_original+1,
                      self.laenge_original:self.laenge_original+1]
@@ -352,7 +477,7 @@ class Gui(QtWidgets.QWidget):
         """
         self.laenge_original = len(self.data)
         # Vorverarbeitung fuer Drehung
-        data_groß = self.drehung_vorverarbeitung(self.data)
+        self.data_gross = drehung_vorverarbeitung(self.data)
         linienintegrale = []
         # verschiedene (Rotations)winkel durchgehen
         # Auswahl Endpunkt je nachdem, was auf der graphischen Oberflaeche
@@ -363,24 +488,32 @@ class Gui(QtWidgets.QWidget):
             angle_value = 180
         else:
             angle_value = 360
-        # Anzahl an Winkelschritten
-        angle_steps = self.sb_anglesteps.value()
-        for alpha in np.linspace(0, angle_value, angle_steps, endpoint=False):
-            self.progress_sino.setValue(alpha+1)
-            # Drehung
-            data_transform = self.drehung(data_groß, alpha)
-            # Bildung von Linienintegralen fuer einzelnen Rotationswinkel
-            linienintegral = np.sum(data_transform, axis=0)
-            linienintegrale.append(linienintegral)
-        self.progress_sino.setValue(self.progress_sino.maximum())
-        # Sinogramm darstellen auf grafischer Oberflaeche
-        self.sinogramm = np.array(linienintegrale)
-        self.img2.setImage(self.sinogramm)
         self.winkel_max = angle_value
+        angle_steps = self.sb_anglesteps.value()
+        self.sinogramm = np.zeros([angle_steps, len(self.data_gross)])
+        # hier Thread!!!
+        self.calculate_vor = Vorwaertsprojektion(angle_value, self.data_gross, angle_steps, self.sinogramm)
+        self.calculate_vor.signal.connect(self.animation)
+        self.calculate_vor.signal_finish.connect(self.animation_finish)
+        self.calculate_vor.start()
+        print("b")
+
+
+        # Sinogramm darstellen auf grafischer Oberflaeche
+
+
         # TODO:threading, schneller machen, Drehung interpolieren? 
         # TODO: live Erzeugung Sinogramm
         
-        
+
+    def animation(self, alpha):
+        self.progress_sino.setValue(alpha + 1)
+        self.img2.setImage(self.sinogramm)
+
+    def animation_finish(self, alpha):
+        self.progress_sino.setValue(self.progress_sino.maximum())
+
+
     # TODO: erklaeren lassen! Umbenennung Button
     def saveButtonPress(self):
         """
@@ -452,130 +585,7 @@ class Gui(QtWidgets.QWidget):
             self.img2.setImage(self.sinogramm)
 
 
-    def drehmatrix(self, grad):
-        """ Erzeugt eine Drehmatrix.
-    
-            Parameter:
-            ----------
-            grad: Angabe der Drehung in Grad (im positivem Drehsinne) in Grad.
-        """
-        # Umrechnung Winkel in Bogenmaß
-        grad_rad = np.radians(grad)
-        # Drehmatrix in homogenen Koordinaten
-        dreh = np.array([[np.cos(grad_rad), np.sin(grad_rad), 0],
-                         [-np.sin(grad_rad), np.cos(grad_rad), 0], [0, 0, 1]])
-        # Matrizen invertieren, da Transformation im positiven Sinn
-        dreh = np.linalg.inv(dreh)
-        return dreh
-    
-    
-    def drehung_vorverarbeitung(self, image):
-        """ Fuer eine anschließende Drehung muessen am Rande des Originalbild
-            Nullen hinzugefuegt werden, um eine anschließende verlustlose Drehung
-            des Bildes zu ermoeglichen (es sollen keine gefuellten Werte des
-            Originalbildes abgeschnitten werden, nur Nullen).
-    
-            Parameter:
-            ----------
-            image: Array, Eingabewerte.
-            
-            Skizze zur Verdeutlichung:
-    
-                                c
-              +--------------------------------------+
-              |                                      |
-              |                 a                    |
-              |    +----------------------------+    |
-              |    |                            |    +---------->  mit Nullen
-              |    |                            |    |             gefuellter
-              |    |                            |    |             Rand
-              |    |                            |    |
-              |    |                            |    |
-            c |  a |                            | a  | c
-              |    |                            |    |
-              |    |                            |    |
-              |    |                            |    |
-              |    |                            |    |
-              |    |                            +------------>   Originalbild
-              |    |                            |    |
-              |    |                            |    |
-              |    +----------------------------+    |
-              |                 a                    |
-              |                                      |
-              +--------------------------------------+
-                                c
-        """
-        # Seitenlaenge quadrat. Matrix (der Eingangswerte) (a)
-        self.laenge_original = len(image)
-        # Wie groß muss vergroeßertes Bild sein fuer anschließende verlustfreie
-        # Drehung? (nach Satz des Pythagoras berechnet)
-        # (auf)runden und Integer damit keine halben Pixel als Ergebnis erhalten
-        # werden (c)
-        c = np.int(np.ceil(np.sqrt(2) * self.laenge_original))
-        # Pruefen, ob Originalsbild ueberhaupt mittig reingelegt werden kann:
-        b = c - self.laenge_original
-        # ist b eine ungerade Zahl, dann vergroeßere c um Eins, damit b im
-        # anschließenden gerade Zahl ist
-        if b % 2 == 1:
-            c += 1
-            b = c - self.laenge_original
-        # ansonsten ist b gerade und Originalbild kann mittig reingelegt werden   
-        # Anlegen eines (groeßeren) Arrays, indem Originalbild anschließend 
-        # (mittig!!) gespeichert wird
-        image_groß = np.zeros((c, c))
-        # nun wird vergroeßertes Bild ins Originalbild gelegt
-        image_groß[np.int(b/2):self.laenge_original+np.int(b/2), np.int(b/2):self.laenge_original+np.int(b/2)] = image
-        # oder mit b//2 (rundet zwar ab, aber b kann nur ganze Zahl sein)
-        return image_groß
-    
-    
-    def drehung(self, image, grad):
-        """ Drehung eines Bildes in positivem Drehsinne.
-    
-            Parameter:
-            ----------
-            image: Array, Eingabewerte.
-    
-            transform: Transformationsmatrix, fuehrt Drehung (im positiven Sinn)
-            durch.
-        """
-        # Erzeugen einer Drehmatrix mit gewaehltem Winkel
-        transform = self.drehmatrix(grad)
-        # Anlegen Null-Array
-        image_transform = np.zeros_like(image)
-        print(np.shape(image_transform))
-        # Schleife:
-        # jeden Pixel einzeln durchgehen, auf diesem Drehmatrix anwenden
-        # und neue rotierte Koordinaten berechnen
-        # Rotation mit Drehmatrix bezieht sich auf Nullpunkt des Koordinatensystems
-        # das heißt fuer eine Drehung um die Mitte des Bildes muss der Nullpunkt
-        # des Koordinatensystems in die Mitte des Bildes gelegt werden
-        # (ansonsten Drehung um obere linke Ecke des Bildes)
-        # Pixel, bei dem Mitte des Koordinaensystems liegt:
-        
-        pixel_mitte = len(image) // 2 
-        # TODO: mitte perfekt runden (auf ganze Zahlen) Jetzt ist es vllt nicht
-        # immer exakt die Mitte des Koordinatensystems?
-        if len(image_transform) %2 == 0: 
-            x = np.arange(-pixel_mitte, pixel_mitte)
-            y = np.arange(-pixel_mitte, pixel_mitte)
-        else:
-            x = np.arange(-pixel_mitte, pixel_mitte+1)
-            y = np.arange(-pixel_mitte, pixel_mitte+1)
-        x, y = np.meshgrid(x, y)
-        print(np.shape(x))
-        koord_xy_transform = (np.array([x, y, np.ones_like(x)]).T @ transform).T
-        print(np.shape(koord_xy_transform)) 
-        x_transform = (koord_xy_transform[0])
-        y_transform = (koord_xy_transform[1])
-        bed1 = (-pixel_mitte<=x_transform)*(x_transform<pixel_mitte)
-        bed2 = (-pixel_mitte<=y_transform)*(y_transform<pixel_mitte)
-        bed = bed1 * bed2
-        print(np.shape(bed))
-        image_transform[bed] = \
-                        map_coordinates(image, np.array([(y_transform[bed] + pixel_mitte),
-                                                         (x_transform[bed] + pixel_mitte)]))
-        return image_transform
+
         
     # TODO: zu viele weiße Punkte bei Sinogramm?
     # TODO: Kontrast verändern
@@ -590,7 +600,37 @@ def main():
     # TODO: Title
     ui.show()
     sys.exit(app.exec_())
-    
+
+
+class Vorwaertsprojektion(QtCore.QThread):
+    # fuer Animation
+    signal = QtCore.pyqtSignal(float)
+    signal_finish = QtCore.pyqtSignal(float)
+
+    def __init__(self, angle_value, data_gross, angle_steps, sinogramm):
+        super().__init__()
+        print("init")
+        self.angle_value = angle_value
+        self.data_gross = data_gross
+        self.angle_steps = angle_steps
+        self.sinogramm = sinogramm
+
+    def run(self):
+        # Anzahl an Winkelschritten
+        print("run")
+        numbers_angle = np.linspace(0, self.angle_value, self.angle_steps, endpoint=False)
+        for count, alpha in enumerate(numbers_angle):
+            print(count)
+            # TODO: Progressbar raus aus Thread!
+            # Drehung
+            data_transform = drehung(self.data_gross, alpha)
+            # Bildung von Linienintegralen fuer einzelnen Rotationswinkel
+            linienintegral = np.sum(data_transform, axis=0)
+            self.sinogramm[count] = linienintegral
+            self.signal.emit(alpha)
+        self.signal_finish.emit(alpha)
+
+
 
 if __name__ == "__main__":
     main()
@@ -608,5 +648,4 @@ if __name__ == "__main__":
     # auswahl filter nur wenn gefiltert angeklickt ist
     # threading, Animation
     
-    # TODO: spacer
-    
+    # TODO: spacer, progressbar, Progressbar bei Auswahl 180 360

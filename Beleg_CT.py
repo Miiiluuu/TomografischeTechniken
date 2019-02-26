@@ -102,7 +102,7 @@ class Gui(QtWidgets.QWidget):
         # die fuer eine anschließende Vorwaertsprojektion verwendet werden
         self.groupBox_anglesteps = QGroupBox("Anzahl der Winkelschritte:")
         self.sb_anglesteps = QSpinBox()
-        self.sb_anglesteps.setValue(30)
+        self.sb_anglesteps.setValue(60)
         self.sb_anglesteps.setMinimum(10)
         self.sb_anglesteps.setMaximum(500)
         self.sb_anglesteps.setSingleStep(10)
@@ -140,16 +140,15 @@ class Gui(QtWidgets.QWidget):
         # Rueckprojektion
         self.groupBox_cb = QGroupBox("Filter fuer Rückprojektion:")
         self.cb_filter = QComboBox()
-        self.cb_filter.addItem("None")
         self.cb_filter.addItem("Ramp")
         self.cb_filter.addItem("Shepp-Logan")
         self.cb_filter.addItems(["Middle"])
-        # abspeichern des aktuell ausgewaehlten Filters
-        currentchoice = self.cb_filter.currentText()
         self.vbox_cb = QVBoxLayout()
         self.vbox_cb.addWidget(self.cb_filter)
         self.groupBox_cb.setLayout(self.vbox_cb)
-        self.hbox_r.addWidget(self.groupBox_cb) 
+        self.hbox_r.addWidget(self.groupBox_cb)
+        self.radio_mit.clicked.connect(self.activate_cb_filter)
+        self.radio_ohne.clicked.connect(self.deactivate_cb_filter)
 
         # TODO: Verhaeltnisse Bilder zueinander
         # Hinzufuegen grafischer Bilder zum Layout
@@ -192,7 +191,7 @@ class Gui(QtWidgets.QWidget):
         
         # Bild 3
         self.vbox_img3 = QVBoxLayout()
-        label_img3 = QLabel("Sinogramm")
+        label_img3 = QLabel("rückprojiziertes Bild")
         label_img3.setFont(font)
         self.vbox_img3.addWidget(label_img3)
         self.graphic3 = pyqtgraph.GraphicsLayoutWidget()
@@ -207,7 +206,7 @@ class Gui(QtWidgets.QWidget):
         self.view3.addItem(self.img3)
         self.grid.addLayout(self.vbox_img3, 1, 1)
         self.img3.setImage(np.eye(5))
-        
+
         # Bild 4
         self.vbox_img4 = QVBoxLayout()
         label_img4 = QLabel("Sinogramm")
@@ -225,7 +224,16 @@ class Gui(QtWidgets.QWidget):
         self.view4.addItem(self.img4)
         self.grid.addLayout(self.vbox_img4, 1, 2)
         self.img4.setImage(np.eye(5))
-        
+
+
+    def activate_cb_filter(self):
+        self.cb_filter.setEnabled(True)
+
+
+    def deactivate_cb_filter(self):
+        self.cb_filter.setEnabled(False)
+
+
     def clearButtonPress(self):
         """
         Löscht alle Bilder.
@@ -253,30 +261,32 @@ class Gui(QtWidgets.QWidget):
         None
         """
         self.img3.clear()
-        print("a")
         alpha_r = np.linspace(0, self.winkel_max, len(self.sinogramm), endpoint=False)
         self.image_r = np.zeros((len(self.sinogramm[0]), len(self.sinogramm[0])))
         filterart = self.radio_mit.isChecked()
         # Anwendung Filter vor Rueckprojektion
         self.sinogramm_filter = np.copy(self.sinogramm)
+        # Filterung ausgewaehlt
         if filterart:
-            # Erstellung Rampfilter
-            ramp = np.abs(np.fft.fftshift(np.fft.fftfreq(len(self.sinogramm[0]))))
-            for i in range(len(self.sinogramm)):
-                # Fouriertransformation erstellen
-                fourier_image = np.fft.fft(self.sinogramm[i])
-                fourier_image = np.fft.fftshift(fourier_image)
-                # Anwenden des Filters auf Bild
-                # Multiplikation im Frequenzraum
-                fourier_gefiltert = fourier_image * ramp
-                # Bild zurueckshiften
-                fourier_gefiltert = np.fft.ifftshift(fourier_gefiltert)
-                # Ruecktransformation Frequenz- in Ortsraum
-                self.sinogramm_filter[i] = np.fft.ifft(fourier_gefiltert)
+            # abspeichern des aktuell ausgewaehlten Filters
+            self.currentchoice = self.cb_filter.currentText()
+            if self.currentchoice == "Ramp":
+                # Erstellung Rampfilter
+                ramp = np.abs(np.fft.fftshift(np.fft.fftfreq(len(self.sinogramm[0]))))
+                for i in range(len(self.sinogramm)):
+                    # Fouriertransformation erstellen
+                    fourier_image = np.fft.fft(self.sinogramm[i])
+                    fourier_image = np.fft.fftshift(fourier_image)
+                    # Anwenden des Filters auf Bild
+                    # Multiplikation im Frequenzraum
+                    fourier_gefiltert = fourier_image * ramp
+                    # Bild zurueckshiften
+                    fourier_gefiltert = np.fft.ifftshift(fourier_gefiltert)
+                    # Ruecktransformation Frequenz- in Ortsraum
+                    self.sinogramm_filter[i] = np.fft.ifft(fourier_gefiltert)
         alpha_r = np.linspace(0, self.winkel_max, len(self.sinogramm_filter), endpoint=False)
         self.image_r = np.zeros((len(self.sinogramm_filter[0]), len(self.sinogramm_filter[0])))
         for i in range(len(self.sinogramm_filter)):
-            print(i)
             sino2d = self.sinogramm_filter[i] * np.ones_like(self.image_r)
             # Drehung
             sino2d_transform = self.drehung(sino2d, -alpha_r[i])
@@ -285,12 +295,16 @@ class Gui(QtWidgets.QWidget):
                      self.laenge_original:self.laenge_original+1]
         # Rückprojektion darstellen auf grafischer Oberflaeche
         self.img3.setImage(self.image_r)
-        print("b")
-    
+        # durch vorherige Vorwärtsprojektion (dabei wurde Ursprungsbild fuer
+        # eine verlustfreie Drehung vergroeßert) ist um rueckprojeziertes
+        # Bild ein Kreis
+        # dieser wird nun entfernt
+        diff = (len(self.image_r) - self.laenge_original) // 2
+        self.image_r = self.image_r[diff:self.laenge_original+diff, diff:self.laenge_original+diff]
+        self.img3.setImage(self.image_r)
+        print(np.shape(self.image_r))
             
-            
-            
-            
+
     def loadButtonPress(self):
         """
         Öffnet file dialog um eine Datei zu laden/grafisch darzustellen.
@@ -386,7 +400,14 @@ class Gui(QtWidgets.QWidget):
                                                         self.sinogramm))
         self.sinogramm_plus_info[0, 0] = self.laenge_original
         # TODO: abspeichern ob 180 )oder 360 °)
-        self.sinogramm_plus_info[0, 1] = 180
+        # je nachdem was auf grafischen Oberfläche ausgewaehlt wurde,
+        # 180 Grad oder 360 Grad abspeichern
+        angle = self.radio180.isChecked()
+        if angle:
+            angle_value = 180
+        else:
+            angle_value = 360
+        self.sinogramm_plus_info[0, 1] = angle_value
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
         fileName, _ = QFileDialog.getSaveFileName(self,"Save file", "","All Files (*);;Python Files (*.py)", options=options)
@@ -535,7 +556,6 @@ class Gui(QtWidgets.QWidget):
         pixel_mitte = len(image) // 2 
         # TODO: mitte perfekt runden (auf ganze Zahlen) Jetzt ist es vllt nicht
         # immer exakt die Mitte des Koordinatensystems?
-    #    koord_rotate = []
         if len(image_transform) %2 == 0: 
             x = np.arange(-pixel_mitte, pixel_mitte)
             y = np.arange(-pixel_mitte, pixel_mitte)
@@ -577,12 +597,16 @@ if __name__ == "__main__":
     
     
 # Buttons: Parameter Anzahl Winkelschritte, pi oder 2pi (Radiobutton, Checkbox)
-# TODO: Winkelanzahl: wieviele WInkeschritte
+# TODO: Winkelanzahl: wieviele Winkeschritte
     # moved...slider
     # welcher winkelraum (180 oder 360°) checkbox
     # TODO: ProgressBar
     # TODO: funktioniert nicht mit Windowskonsole?
-    
+    # TODO: alle Buttons richtig verknüpfen, richtig setzen
+    # TODO: MenuToolBar oben, grafische Oberfläche überarbeiten
+    # TODO: Beschreibung wenn man auf Cursor raufkommt
+    # auswahl filter nur wenn gefiltert angeklickt ist
+    # threading, Animation
     
     # TODO: spacer
     

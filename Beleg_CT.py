@@ -28,7 +28,7 @@ def drehmatrix(grad):
 
         Parameter:
         ----------
-        grad: Angabe der Drehung in Grad (im positivem Drehsinne) in Grad.
+        grad: Angabe der Drehung(im positivem Drehsinne) in Grad.
     """
     # Umrechnung Winkel in Bogenmaß
     grad_rad = np.radians(grad)
@@ -76,14 +76,15 @@ def drehung_vorverarbeitung(image):
           +--------------------------------------+
                             c
     """
-    # Seitenlaenge quadrat. Matrix (der Eingangswerte) (a)
+    # Annahme: quadratische Eingangs-Matrix
+    # Seitenlaenge der ursprünglichen Matrix abspeichern (a)
     laenge_original = len(image)
-    # Wie groß muss vergroeßertes Bild sein fuer anschließende verlustfreie
-    # Drehung? (nach Satz des Pythagoras berechnet)
+    # Wie groß muss vergrößertes Bild sein für anschließende verlustfreie
+    # Drehung? (mit Satz des Pythagoras berechnet)
     # (auf)runden und Integer damit keine halben Pixel als Ergebnis erhalten
     # werden (c)
     c = np.int(np.ceil(np.sqrt(2) * laenge_original))
-    # Pruefen, ob Originalsbild ueberhaupt mittig reingelegt werden kann:
+    # Prüfen, ob Originalbild überhaupt mittig reingelegt werden kann:
     b = c - laenge_original
     # ist b eine ungerade Zahl, dann vergroeßere c um Eins, damit b im
     # anschließenden gerade Zahl ist
@@ -94,36 +95,26 @@ def drehung_vorverarbeitung(image):
     # Anlegen eines (groeßeren) Arrays, indem Originalbild anschließend
     # (mittig!!) gespeichert wird
     image_groß = np.zeros((c, c))
-    # nun wird vergroeßertes Bild ins Originalbild gelegt
+    # nun wird Originalbild mittig ins vergroeßertes Bild gelegt
     image_groß[np.int(b / 2):laenge_original + np.int(b / 2), np.int(b / 2):laenge_original + np.int(b / 2)] = image
-    # oder mit b//2 (rundet zwar ab, aber b kann nur ganze Zahl sein)
     return image_groß
 
 
 def drehung(image, grad):
-    """ Drehung eines Bildes in positivem Drehsinne.
+    """ Drehung eines Bildes im positiven Drehsinne.
 
         Parameter:
         ----------
         image: Array, Eingabewerte.
-
-        transform: Transformationsmatrix, fuehrt Drehung (im positiven Sinn)
-        durch.
     """
     # Erzeugen einer Drehmatrix mit gewaehltem Winkel
     transform = drehmatrix(grad)
-    # Anlegen Null-Array
     image_transform = np.zeros_like(image)
-    print(np.shape(image_transform))
-    # Schleife:
-    # jeden Pixel einzeln durchgehen, auf diesem Drehmatrix anwenden
-    # und neue rotierte Koordinaten berechnen
     # Rotation mit Drehmatrix bezieht sich auf Nullpunkt des Koordinatensystems
     # das heißt fuer eine Drehung um die Mitte des Bildes muss der Nullpunkt
     # des Koordinatensystems in die Mitte des Bildes gelegt werden
     # (ansonsten Drehung um obere linke Ecke des Bildes)
     # Pixel, bei dem Mitte des Koordinaensystems liegt:
-
     pixel_mitte = len(image) // 2
     # TODO: mitte perfekt runden (auf ganze Zahlen) Jetzt ist es vllt nicht
     # immer exakt die Mitte des Koordinatensystems?
@@ -134,15 +125,12 @@ def drehung(image, grad):
         x = np.arange(-pixel_mitte, pixel_mitte + 1)
         y = np.arange(-pixel_mitte, pixel_mitte + 1)
     x, y = np.meshgrid(x, y)
-    #print(np.shape(x))
     koord_xy_transform = (np.array([x, y, np.ones_like(x)]).T @ transform).T
-    #print(np.shape(koord_xy_transform))
     x_transform = (koord_xy_transform[0])
     y_transform = (koord_xy_transform[1])
     bed1 = (-pixel_mitte <= x_transform) * (x_transform < pixel_mitte)
     bed2 = (-pixel_mitte <= y_transform) * (y_transform < pixel_mitte)
     bed = bed1 * bed2
-    #print(np.shape(bed))
     image_transform[bed] = \
         map_coordinates(image, np.array([(y_transform[bed] + pixel_mitte),
                                          (x_transform[bed] + pixel_mitte)]))
@@ -161,56 +149,54 @@ class Gui(QtWidgets.QWidget):
         self.grid.setSpacing(10)
         self.setWindowTitle("Wir basteln uns ein CT!")
         
-        # Erzeugen VBox erzeugen, diese wird dem Grid hinzufuegt
-        # in VBox kommen alle Buttons, Auswahlmoeglichkeiten fuer Parameter uÄ
-        self.vbox_buttons = QVBoxLayout()
-        self.grid.addLayout(self.vbox_buttons, 0, 0)
-        self.vbox_buttons.addStretch(1)
+        # Erzeugen VBox, diese wird dem Grid hinzufügt
+        # in VBox kommen alle Buttons, Auswahlmöglichkeiten für Parameter uÄ
+        self.vbox_button_vor = QVBoxLayout()
+        self.grid.addLayout(self.vbox_button_vor, 0, 0)
+        self.vbox_button_vor.addStretch(1)
         
-        self.vbox_buttons2 = QVBoxLayout()
-        self.grid.addLayout(self.vbox_buttons2, 1, 0)
-        self.vbox_buttons2.addStretch(1)
+        self.vbox_button_rueck = QVBoxLayout()
+        self.grid.addLayout(self.vbox_button_rueck, 1, 0)
+        self.vbox_button_rueck.addStretch(1)
         
-        # Hinzufuegen von Buttons und Aehnlichem zur VBox in grafischen
-        # Oberflaeche
-        
+        # Hinzufuegen von Buttons und ähnlichem zur VBox in grafischen
+        # Oberfläche
         # TODO: einige Buttons in QMenuBar oder QToolBar, QTab? QScrollbar?
         # TODO: Benennung aendern
-        # OpenButton hinzufuegen
+        # OpenButton hinzufügen
         self.loadButton = QPushButton("Open")
-        # TODO: naehere Beschreibung des Buttons mit Cursor drauf?
+        # TODO: naehere Beschreibung des Buttons mit Cursor drauf? ToolTip!
         self.loadButton.clicked.connect(self.loadButtonPress)
-        self.vbox_buttons.addWidget(self.loadButton)
-        # Knopf zum Erzeugen des Sinogramms
-        # TODO: wenn das zuallererst aufgerufen wird Absturz, nicht ok
-        self.sinoButton = QPushButton("Erstelle Sinogramm")
-        self.sinoButton.clicked.connect(self.sinoButtonPress)
-        self.vbox_buttons.addWidget(self.sinoButton)
+        self.vbox_button_vor.addWidget(self.loadButton)
         # SaveButton hinzufuegen
-        self.saveButton = QPushButton("Save")
+        self.saveButton = QPushButton("Save Sinogramm")
         self.saveButton.clicked.connect(self.saveButtonPress)
-        self.vbox_buttons.addWidget(self.saveButton)
+        self.vbox_button_vor.addWidget(self.saveButton)
         # Knopf zum Laden des Sinogramms
         self.loadsinoButton = QPushButton("Load Sinogramm")
         self.loadsinoButton.clicked.connect(self.loadsinoButtonPress)
-        self.vbox_buttons.addWidget(self.loadsinoButton)
+        self.vbox_button_vor.addWidget(self.loadsinoButton)
         # RueckprojectionButton hinzufuegen
         self.rueckButton = QPushButton("Rückwärtsprojektion")
         # TODO: naehere Beschreibung des Buttons mit Cursor drauf?
         self.rueckButton.clicked.connect(self.rueckButtonPress)
-        self.vbox_buttons.addWidget(self.rueckButton)
+        self.vbox_button_vor.addWidget(self.rueckButton)
         # ClearButton hinzufuegen
         self.clearButton = QPushButton("Clear")
         # TODO: naehere Beschreibung des Buttons mit Cursor drauf?
         self.clearButton.clicked.connect(self.clearButtonPress)
-        self.vbox_buttons.addWidget(self.clearButton)
+        self.vbox_button_vor.addWidget(self.clearButton)
         
-        # Auswahlmoeglichkeiten fuer Vorwaertsprojektion
+        # Auswahlmoeglichkeiten fuer Vorwärtsprojektion
         # ist Uebersicht zur Auswahl Parameter fuer Vorwaertsprojektion
         # es wird HBox erzeugt
         self.hbox_v = QHBoxLayout()
         # Hinzufuegen zum Layout (VBox)
-        self.vbox_buttons.addLayout(self.hbox_v)
+        self.groupBox_vor = QGroupBox("Vorwärtsprojektion")
+        self.vbox_v = QVBoxLayout()
+        self.vbox_v.addLayout(self.hbox_v)
+        self.groupBox_vor.setLayout(self.vbox_v)
+        self.vbox_button_vor.addWidget(self.groupBox_vor)
         # erstellt RadioButton, zur Auswahl, ob Sinogramm im Vollkreis (360°)
         # oder Halbkreis (180°) berechnet werden soll
         self.groupBox_angle = QGroupBox("Projektion im Winkelraum:")
@@ -235,20 +221,28 @@ class Gui(QtWidgets.QWidget):
         self.vbox_anglesteps.addWidget(self.sb_anglesteps)
         self.groupBox_anglesteps.setLayout(self.vbox_anglesteps)
         self.hbox_v.addWidget(self.groupBox_anglesteps)
-    
         # erstellt eine Progressbar, welche den Fortschritt in der
         # Vorwaertsprojektion (des Sinogramms) darstellt.
         self.progress_sino = QProgressBar()
+        self.progress_sino.setStyleSheet("text-align: center;")
         self.progress_sino.setMaximum(180)
         # Hinzufuegen zum Layout (VBox)
-        self.vbox_buttons.addWidget(self.progress_sino)
+        self.vbox_v.addWidget(self.progress_sino)
+        # Knopf zum Erzeugen des Sinogramms
+        # TODO: wenn das zuallererst aufgerufen wird Absturz, nicht ok
+        self.sinoButton = QPushButton("Go")
+        self.sinoButton.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
+        self.sinoButton.resize(50, 50)
+        self.sinoButton.clicked.connect(self.sinoButtonPress)
+        self.vbox_v.addWidget(self.sinoButton, 0, QtCore.Qt.AlignCenter)
+
     
         # Auswahlmoeglichkeiten fuer Rueckwaertsprojektion
         # ist Uebersicht zur Auswahl Parameter fuer Rueckwaertsprojektion
         # es wird HBox erzeugt
         self.hbox_r = QHBoxLayout()
         # Hinzufuegen zum Layout (VBox)
-        self.vbox_buttons2.addLayout(self.hbox_r)                                                                    
+        self.vbox_button_rueck.addLayout(self.hbox_r)
         # erstellt RadioButton, zur Auswahl, ob gefilterte oder ungefilterte
         # Rueckprojektion stattfinden soll
         self.groupBox_projection = QGroupBox("Projektion im Winkelraum:")
@@ -446,7 +440,7 @@ class Gui(QtWidgets.QWidget):
         options |= QFileDialog.DontUseNativeDialog
         fileName, _ = QFileDialog.getOpenFileName(self,
                                                   "Open file", ""
-                                                  ,"All Files (*);;Python Files (*.py)",
+                                                  ,"CT Bilder (*.npy)",
                                                   options=options)
         # TODO: was passiert wenn es kein File gibt? bzw man etwas
         # unzureichendes laedt? Kernel died!
@@ -543,12 +537,13 @@ class Gui(QtWidgets.QWidget):
         self.sinogramm_plus_info[0, 1] = angle_value
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
-        fileName, _ = QFileDialog.getSaveFileName(self,"Save file", "","All Files (*);;Python Files (*.py)", options=options)
+        fileName, _ = QFileDialog.getSaveFileName(self,"Save file", "Sinogramm.milu", "Sinogramme (*.milu)", options=options)
         # TODO: was passiert wenn es kein File gibt? bzw man etwas
         # unzureichendes laedt? Kernel died!
         if fileName:
             # Speichern der Daten
-            np.save(fileName, self.sinogramm_plus_info)
+            with open(fileName, "wb") as file:
+                np.save(file, self.sinogramm_plus_info)
 
 
     # TODO: erklaeren lassen!
@@ -567,7 +562,7 @@ class Gui(QtWidgets.QWidget):
         """
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
-        fileName, _ = QFileDialog.getOpenFileName(self,"Open Sino", "","All Files (*);;Python Files (*.py)", options=options)
+        fileName, _ = QFileDialog.getOpenFileName(self,"Open Sino", "", "Sinogramme (*.milu)", options=options)
         # TODO: Bei Cancel stürzt Programm ab??
         # TODO: was passiert wenn es kein File gibt?
         if fileName:
@@ -642,6 +637,7 @@ if __name__ == "__main__":
     # welcher winkelraum (180 oder 360°) checkbox
     # TODO: ProgressBar
     # TODO: funktioniert nicht mit Windowskonsole?
+    # TODO: falsche
     # TODO: alle Buttons richtig verknüpfen, richtig setzen
     # TODO: MenuToolBar oben, grafische Oberfläche überarbeiten
     # TODO: Beschreibung wenn man auf Cursor raufkommt
@@ -649,3 +645,7 @@ if __name__ == "__main__":
     # threading, Animation
     
     # TODO: spacer, progressbar, Progressbar bei Auswahl 180 360
+    # TODO: ok Buttons fuer Boxen?
+    # rückprojizierte Bilder abspeichern, damit erneut Projektion mgl
+    # Progress, Animation Rueck, andere Filter, Speichern rueck Bilder
+    # ausgrauen

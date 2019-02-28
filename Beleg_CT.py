@@ -649,3 +649,4 @@ if __name__ == "__main__":
     # rückprojizierte Bilder abspeichern, damit erneut Projektion mgl
     # Progress, Animation Rueck, andere Filter, Speichern rueck Bilder
     # ausgrauen, rescalen?
+    # TODO: bei richtigem CT funktioniert Rueckreko nicht

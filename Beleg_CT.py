@@ -176,11 +176,6 @@ class Gui(QtWidgets.QWidget):
         self.loadsinoButton = QPushButton("Load Sinogramm")
         self.loadsinoButton.clicked.connect(self.loadsinoButtonPress)
         self.vbox_button_vor.addWidget(self.loadsinoButton)
-        # RueckprojectionButton hinzufuegen
-        self.rueckButton = QPushButton("Rückwärtsprojektion")
-        # TODO: naehere Beschreibung des Buttons mit Cursor drauf?
-        self.rueckButton.clicked.connect(self.rueckButtonPress)
-        self.vbox_button_vor.addWidget(self.rueckButton)
         # ClearButton hinzufuegen
         self.clearButton = QPushButton("Clear")
         # TODO: naehere Beschreibung des Buttons mit Cursor drauf?
@@ -236,13 +231,16 @@ class Gui(QtWidgets.QWidget):
         self.sinoButton.clicked.connect(self.sinoButtonPress)
         self.vbox_v.addWidget(self.sinoButton, 0, QtCore.Qt.AlignCenter)
 
-    
-        # Auswahlmoeglichkeiten fuer Rueckwaertsprojektion
-        # ist Uebersicht zur Auswahl Parameter fuer Rueckwaertsprojektion
+        # Auswahlmoeglichkeiten fuer Rückwärtsprojektion
+        # ist Uebersicht zur Auswahl Parameter fuer Rückwaertsprojektion
         # es wird HBox erzeugt
         self.hbox_r = QHBoxLayout()
         # Hinzufuegen zum Layout (VBox)
-        self.vbox_button_rueck.addLayout(self.hbox_r)
+        self.groupBox_rueck = QGroupBox("Rückwärtsprojektion")
+        self.vbox_r = QVBoxLayout()
+        self.vbox_r.addLayout(self.hbox_r)
+        self.groupBox_rueck.setLayout(self.vbox_r)
+        self.vbox_button_rueck.addWidget(self.groupBox_rueck)
         # erstellt RadioButton, zur Auswahl, ob gefilterte oder ungefilterte
         # Rueckprojektion stattfinden soll
         self.groupBox_projection = QGroupBox("Projektion im Winkelraum:")
@@ -268,6 +266,13 @@ class Gui(QtWidgets.QWidget):
         self.hbox_r.addWidget(self.groupBox_cb)
         self.radio_mit.clicked.connect(self.activate_cb_filter)
         self.radio_ohne.clicked.connect(self.deactivate_cb_filter)
+        # Knopf fuer Start Rückprojektion
+        self.rueckButton = QPushButton("Go")
+        self.rueckButton.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
+        self.rueckButton.resize(50, 50)
+        self.rueckButton.clicked.connect(self.rueckButtonPress)
+        self.vbox_r.addWidget(self.rueckButton, 0, QtCore.Qt.AlignCenter)
+
 
         # TODO: Verhaeltnisse Bilder zueinander
         # Hinzufuegen grafischer Bilder zum Layout
@@ -328,7 +333,7 @@ class Gui(QtWidgets.QWidget):
 
         # Bild 4
         self.vbox_img4 = QVBoxLayout()
-        label_img4 = QLabel("Sinogramm")
+        label_img4 = QLabel("Differenzbild")
         label_img4.setFont(font)
         self.vbox_img4.addWidget(label_img4)
         self.graphic4 = pyqtgraph.GraphicsLayoutWidget()

@@ -648,4 +648,4 @@ if __name__ == "__main__":
     # TODO: ok Buttons fuer Boxen?
     # rückprojizierte Bilder abspeichern, damit erneut Projektion mgl
     # Progress, Animation Rueck, andere Filter, Speichern rueck Bilder
-    # ausgrauen
+    # ausgrauen, rescalen?

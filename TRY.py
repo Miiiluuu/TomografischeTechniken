@@ -6,50 +6,37 @@ Created on Thu Jan 10 13:41:27 2019
 """
 
 import sys
-from PyQt5.QtWidgets import QMainWindow, QApplication, QWidget, QPushButton, QAction
-from PyQt5.QtGui import QIcon
-from PyQt5.QtCore import pyqtSlot
+from PyQt5.QtCore import *
+from PyQt5.QtGui import *
 
 
-class App(QMainWindow):
+class tooldemo(QMainWindow):
+   def __init__(self, parent=None):
+      super(tooldemo, self).__init__(parent)
+      layout = QVBoxLayout()
+      tb = self.addToolBar("File")
+
+      new = QAction(QIcon("new.bmp"), "new", self)
+      tb.addAction(new)
+
+      open = QAction(QIcon("open.bmp"), "open", self)
+      tb.addAction(open)
+      save = QAction(QIcon("save.bmp"), "save", self)
+      tb.addAction(save)
+      tb.actionTriggered[QAction].connect(self.toolbtnpressed)
+      self.setLayout(layout)
+      self.setWindowTitle("toolbar demo")
+
+   def toolbtnpressed(self, a):
+      print("pressed tool button is", a.text())
 
 
-   def __init__(self):
-      super().__init__()
+def main():
+   app = QApplication(sys.argv)
+   ex = tooldemo()
+   ex.show()
+   sys.exit(app.exec_())
 
-
-      self.title = 'PyQt5 menu - pythonspot.com'
-      self.left = 10
-      self.top = 10
-      self.width = 640
-      self.height = 400
-      self.initUI()
-
-
-   def initUI(self):
-      self.setWindowTitle(self.title)
-
-
-      self.setGeometry(self.left, self.top, self.width, self.height)
-
-      mainMenu = self.menuBar()
-      fileMenu = mainMenu.addMenu('File')
-      editMenu = mainMenu.addMenu('Edit')
-      viewMenu = mainMenu.addMenu('View')
-      searchMenu = mainMenu.addMenu('Search')
-      toolsMenu = mainMenu.addMenu('Tools')
-      helpMenu = mainMenu.addMenu('Help')
-
-      exitButton = QAction(QIcon('exit24.png'), 'Exit', self)
-      exitButton.setShortcut('Ctrl+Q')
-      exitButton.setStatusTip('Exit application')
-      exitButton.triggered.connect(self.close)
-      fileMenu.addAction(exitButton)
-      viewMenu.triggered.connect(self.close)
-
-      self.show()
 
 if __name__ == '__main__':
-   app = QApplication(sys.argv)
-ex = App()
-sys.exit(app.exec_())
+   main()

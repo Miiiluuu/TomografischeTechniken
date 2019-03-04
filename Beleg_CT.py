@@ -19,7 +19,9 @@ from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import (QFileDialog, QPushButton, QGridLayout,
                              QVBoxLayout, QHBoxLayout, QSlider, QRadioButton,
                              QGroupBox, QProgressBar, QCheckBox, QLabel,
-                             QSpinBox, QComboBox)
+                             QSpinBox, QComboBox, QToolTip)
+# TODO: wie richtig installieren?
+import PIL as pil
 import pyqtgraph
 
 
@@ -149,36 +151,39 @@ class Gui(QtWidgets.QWidget):
         self.grid.setSpacing(10)
         self.setWindowTitle("Wir basteln uns ein CT!")
         
-        # Erzeugen VBox, diese wird dem Grid hinzufügt
+        # Erzeugen VBox (jeweils für Vor- und Rücktransformation, diese wird
+        # dem Grid hinzufügt
         # in VBox kommen alle Buttons, Auswahlmöglichkeiten für Parameter uÄ
         self.vbox_button_vor = QVBoxLayout()
         self.grid.addLayout(self.vbox_button_vor, 0, 0)
         self.vbox_button_vor.addStretch(1)
-        
         self.vbox_button_rueck = QVBoxLayout()
         self.grid.addLayout(self.vbox_button_rueck, 1, 0)
         self.vbox_button_rueck.addStretch(1)
         
-        # Hinzufuegen von Buttons und ähnlichem zur VBox in grafischen
+        # Hinzufuegen von Buttons und Ähnlichem zur VBox in grafischen
         # Oberfläche
-        # TODO: einige Buttons in QMenuBar oder QToolBar, QTab? QScrollbar?
-        # TODO: Benennung aendern
+        # TODO: einige Buttons in QToolBar stecken(funktioniert nicht wirklich
+        # TODO: mit Icon ...
         # OpenButton hinzufügen
         self.loadButton = QPushButton("Open")
-        # TODO: naehere Beschreibung des Buttons mit Cursor drauf? ToolTip!
+        self.loadButton.setToolTip('Öffnet ein Bild.')
         self.loadButton.clicked.connect(self.loadButtonPress)
         self.vbox_button_vor.addWidget(self.loadButton)
         # SaveButton hinzufuegen
         self.saveButton = QPushButton("Save Sinogramm")
+        self.saveButton.setToolTip('Speichert Sinogramm unter selbst'
+                                   'gewählten Dateinamen ab.')
         self.saveButton.clicked.connect(self.saveButtonPress)
         self.vbox_button_vor.addWidget(self.saveButton)
         # Knopf zum Laden des Sinogramms
         self.loadsinoButton = QPushButton("Load Sinogramm")
+        self.loadsinoButton.setToolTip('Lädt ein abgespeichertes Sinogramm.')
         self.loadsinoButton.clicked.connect(self.loadsinoButtonPress)
         self.vbox_button_vor.addWidget(self.loadsinoButton)
         # ClearButton hinzufuegen
         self.clearButton = QPushButton("Clear")
-        # TODO: naehere Beschreibung des Buttons mit Cursor drauf?
+        self.clearButton.setToolTip('Entfernt alle vorherig geladenen Bilder.')
         self.clearButton.clicked.connect(self.clearButtonPress)
         self.vbox_button_vor.addWidget(self.clearButton)
         
@@ -216,11 +221,12 @@ class Gui(QtWidgets.QWidget):
         self.vbox_anglesteps.addWidget(self.sb_anglesteps)
         self.groupBox_anglesteps.setLayout(self.vbox_anglesteps)
         self.hbox_v.addWidget(self.groupBox_anglesteps)
+        # TODO: je nachdem ob 180° oder 360° ausgewählt wurde
+        # TODO: auch eine für Rückproj machen ...
         # erstellt eine Progressbar, welche den Fortschritt in der
         # Vorwaertsprojektion (des Sinogramms) darstellt.
         self.progress_sino = QProgressBar()
         self.progress_sino.setStyleSheet("text-align: center;")
-        self.progress_sino.setMaximum(180)
         # Hinzufuegen zum Layout (VBox)
         self.vbox_v.addWidget(self.progress_sino)
         # Knopf zum Erzeugen des Sinogramms
@@ -361,7 +367,7 @@ class Gui(QtWidgets.QWidget):
 
     def clearButtonPress(self):
         """
-        Löscht alle Bilder.
+        Löscht alle vorher erzeugten/geladenen Bilder.
         
         Parameters
         ----------
@@ -371,14 +377,14 @@ class Gui(QtWidgets.QWidget):
         ----------
         None
         """
-
         self.img1.clear()
         self.img2.clear()
         self.img3.clear()
         self.img4.clear()
 
 
-    # TODO: erklären lassen...
+    # TODO: erklären lassen... animieren (in Thread packen)
+    # TODO: anderen Filter benutzen
     def rueckButtonPress(self):
         """
         Rueckprojektion. Dabei Auswahl auf grafischen Oberfläache, ob
@@ -435,7 +441,10 @@ class Gui(QtWidgets.QWidget):
         self.image_r = self.image_r[diff:self.laenge_original+diff, diff:self.laenge_original+diff]
         self.img3.setImage(self.image_r)
         #print(np.shape(self.image_r))
-            
+        # TODO: noch nicht fertig
+        # Differenzbild ezeugen und grafisch darstellen
+        self.diff_img = pil.ImageChops.subtract(self.data, self.image_r)
+        self.img4.setImage(self.diff_img)
 
     def loadButtonPress(self):
         """
@@ -495,6 +504,7 @@ class Gui(QtWidgets.QWidget):
             angle_value = 180
         else:
             angle_value = 360
+        # TODO: ??
         self.winkel_max = angle_value
         angle_steps = self.sb_anglesteps.value()
         self.sinogramm = np.zeros([angle_steps, len(self.data_gross)])
@@ -514,6 +524,8 @@ class Gui(QtWidgets.QWidget):
         
 
     def animation(self, alpha):
+        # TODO: hier Einstellen, ob 180° oder 360° mit self.angle_value
+        self.progress_sino.setMaximum(180)
         self.progress_sino.setValue(alpha + 1)
         self.img2.setImage(self.sinogramm)
 

@@ -272,6 +272,7 @@ class Gui(QtWidgets.QWidget):
         self.rueckButton.resize(50, 50)
         self.rueckButton.clicked.connect(self.rueckButtonPress)
         self.vbox_r.addWidget(self.rueckButton, 0, QtCore.Qt.AlignCenter)
+        # TODO: machmal Fehlermeldung wegen FT...
 
 
         # TODO: Verhaeltnisse Bilder zueinander
@@ -329,7 +330,7 @@ class Gui(QtWidgets.QWidget):
         self.img3.setOpts(axisOrder='row-major')
         self.view3.addItem(self.img3)
         self.grid.addLayout(self.vbox_img3, 1, 1)
-        self.img3.setImage(np.eye(5))
+        #self.img3.setImage(np.eye(5))
 
         # Bild 4
         self.vbox_img4 = QVBoxLayout()
@@ -347,7 +348,7 @@ class Gui(QtWidgets.QWidget):
         self.img4.setOpts(axisOrder='row-major')
         self.view4.addItem(self.img4)
         self.grid.addLayout(self.vbox_img4, 1, 2)
-        self.img4.setImage(np.eye(5))
+        #self.img4.setImage(np.eye(5))
 
 
     def activate_cb_filter(self):
@@ -370,11 +371,18 @@ class Gui(QtWidgets.QWidget):
         ----------
         None
         """
-    
-    
+
+        self.img1.clear()
+        self.img2.clear()
+        self.img3.clear()
+        self.img4.clear()
+
+
+    # TODO: erklären lassen...
     def rueckButtonPress(self):
         """
-        (ungefilterte) Rueckprojektion.
+        Rueckprojektion. Dabei Auswahl auf grafischen Oberfläache, ob
+        gefiltert oder ungefiltert.
         
         Parameters
         ----------
@@ -390,7 +398,7 @@ class Gui(QtWidgets.QWidget):
         filterart = self.radio_mit.isChecked()
         # Anwendung Filter vor Rueckprojektion
         self.sinogramm_filter = np.copy(self.sinogramm)
-        # Filterung ausgewaehlt
+        # Auswahl Filterung auf grafischen Oberfläche
         if filterart:
             # abspeichern des aktuell ausgewaehlten Filters
             self.currentchoice = self.cb_filter.currentText()
@@ -398,10 +406,10 @@ class Gui(QtWidgets.QWidget):
                 # Erstellung Rampfilter
                 ramp = np.abs(np.fft.fftshift(np.fft.fftfreq(len(self.sinogramm[0]))))
                 for i in range(len(self.sinogramm)):
-                    # Fouriertransformation erstellen
+                    # Fouriertransformation
                     fourier_image = np.fft.fft(self.sinogramm[i])
                     fourier_image = np.fft.fftshift(fourier_image)
-                    # Anwenden des Filters auf Bild
+                    # Anwenden des Filters auf Bild:
                     # Multiplikation im Frequenzraum
                     fourier_gefiltert = fourier_image * ramp
                     # Bild zurueckshiften
@@ -426,7 +434,7 @@ class Gui(QtWidgets.QWidget):
         diff = (len(self.image_r) - self.laenge_original) // 2
         self.image_r = self.image_r[diff:self.laenge_original+diff, diff:self.laenge_original+diff]
         self.img3.setImage(self.image_r)
-        print(np.shape(self.image_r))
+        #print(np.shape(self.image_r))
             
 
     def loadButtonPress(self):

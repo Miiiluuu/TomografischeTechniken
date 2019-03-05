@@ -140,7 +140,8 @@ def drehung(image, grad):
 class Gui(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
-        
+
+        self.data = None
         # Layouteinstellungen
         # grafische Oberflaeche gestalten
         # Erzeugung uebergeordnetes Grid, in dem alle grafischen Objekte 
@@ -171,6 +172,7 @@ class Gui(QtWidgets.QWidget):
         self.vbox_button_vor.addWidget(self.loadButton)
         # SaveButton Sinogramm hinzufuegen
         self.save_sinoButton = QPushButton("Save Sinogramm")
+        self.save_sinoButton.setEnabled(False)
         self.save_sinoButton.setToolTip('Speichert Sinogramm unter selbst'
                                    'gewählten Dateinamen ab.')
         self.save_sinoButton.clicked.connect(self.saveButtonPress)
@@ -188,11 +190,13 @@ class Gui(QtWidgets.QWidget):
         # AbbruchButton hinzufuegen
         # TODO: Reko abbrechen!
         self.breakButton = QPushButton("Close")
+        self.breakButton.setEnabled(False)
         self.breakButton.setToolTip('Abbruch des Programms.')
         self.breakButton.clicked.connect(qApp.quit)
         self.vbox_button_vor.addWidget(self.breakButton)
         # SaveButton rückprojiziertes Bild hinzufuegen
         self.save_imgButton = QPushButton("Save Reko-bild")
+        self.save_imgButton.setEnabled(False)
         self.save_imgButton.setToolTip('Speichert rückprojiziertes Bild'
                                        ' unter selbst gewählten Dateinamen'
                                        ' ab.')
@@ -248,6 +252,7 @@ class Gui(QtWidgets.QWidget):
         self.sinoButton.resize(50, 50)
         self.sinoButton.clicked.connect(self.sinoButtonPress)
         self.vbox_v.addWidget(self.sinoButton, 0, QtCore.Qt.AlignCenter)
+        self.groupBox_vor.setEnabled(False)
 
         # Auswahlmoeglichkeiten fuer Rückwärtsprojektion
         # ist Uebersicht zur Auswahl Parameter fuer Rückwaertsprojektion
@@ -284,13 +289,19 @@ class Gui(QtWidgets.QWidget):
         self.hbox_r.addWidget(self.groupBox_cb)
         self.radio_mit.clicked.connect(self.activate_cb_filter)
         self.radio_ohne.clicked.connect(self.deactivate_cb_filter)
+        # erstellt eine Progressbar, welche den Fortschritt in der
+        # Vorwaertsprojektion (des Sinogramms) darstellt.
+        self.progress_rueck = QProgressBar()
+        self.progress_rueck.setStyleSheet("text-align: center;")
+        # Hinzufuegen zum Layout (VBox)
+        self.vbox_r.addWidget(self.progress_rueck)
         # Knopf fuer Start Rückprojektion
         self.rueckButton = QPushButton("Go")
         self.rueckButton.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
         self.rueckButton.resize(50, 50)
         self.rueckButton.clicked.connect(self.rueckButtonPress)
         self.vbox_r.addWidget(self.rueckButton, 0, QtCore.Qt.AlignCenter)
-        # TODO: machmal Fehlermeldung wegen FT...
+        self.groupBox_rueck.setEnabled(False)
 
 
         # TODO: Verhaeltnisse Bilder zueinander
@@ -380,11 +391,11 @@ class Gui(QtWidgets.QWidget):
     def clearButtonPress(self):
         """
         Löscht alle vorher erzeugten/geladenen Bilder.
-        
+
         Parameters
         ----------
         None
-        
+
         Return
         ----------
         None
@@ -393,6 +404,15 @@ class Gui(QtWidgets.QWidget):
         self.img2.clear()
         self.img3.clear()
         self.img4.clear()
+        self.data = None
+        self.save_imgButton.setEnabled(False)
+        self.save_sinoButton.setEnabled(False)
+        self.progress_sino.reset()
+        self.progress_rueck.reset()
+        self.breakButton.setEnabled(False)
+        self.groupBox_vor.setEnabled(False)
+        self.groupBox_rueck.setEnabled(False)
+
 
 
     # TODO: erklären lassen... animieren (in Thread packen)
@@ -401,15 +421,16 @@ class Gui(QtWidgets.QWidget):
         """
         Rueckprojektion. Dabei Auswahl auf grafischen Oberfläache, ob
         gefiltert oder ungefiltert.
-        
+
         Parameters
         ----------
         None
-        
+
         Return
         ----------
         None
         """
+        self.groupBox_rueck.setEnabled(False)
         self.img3.clear()
         # Anwendung Filter vor Rueckprojektion
         self.sinogramm_filter = np.copy(self.sinogramm)
@@ -438,18 +459,22 @@ class Gui(QtWidgets.QWidget):
         self.calculate_rueck = Rueckwaertsprojektion(self.sinogramm_filter, self.image_r, alpha_r)
         self.calculate_rueck.signal.connect(self.animation_r)
         self.calculate_rueck.signal_finish.connect(self.animation_r_finish)
+        self.progress_rueck.setMaximum(self.winkel_max)
         self.calculate_rueck.start()
+        self.progress_sino.reset()
+        self.groupBox_vor.setEnabled(False)
+
 
 
 
     def loadButtonPress(self):
         """
         Öffnet file dialog um eine Datei zu laden/grafisch darzustellen.
-        
+
         Parameters
         ----------
         None
-        
+
         Return
         ----------
         None
@@ -462,20 +487,19 @@ class Gui(QtWidgets.QWidget):
                                                   options=options)
         # TODO: was passiert wenn es kein File gibt? bzw man etwas
         # unzureichendes laedt? Kernel died!
-        
+
         if fileName:
-                # Einlesen der Daten
-                self.data = np.load(fileName)
-                # nachdem neue Datei geladen wird sollen vorherige Grafiken
-                # aus allen Bildern entfernt werden
-                self.img1.clear()
-                self.img2.clear()
-                self.img3.clear()
-                self.img4.clear()
-                self.img1.setImage(self.data)
+            # nachdem neue Datei geladen wird sollen vorherige Grafiken
+            # aus allen Bildern entfernt werden
+            self.clearButtonPress()
+            # Einlesen der Daten
+            self.data = np.load(fileName)
+            self.img1.setImage(self.data)
+            self.groupBox_vor.setEnabled(True)
                 
                 
     def sinoButtonPress(self):
+        self.groupBox_vor.setEnabled(False)
         """
         Erstellt Sinogramm und stellt es grafisch dar.
         
@@ -508,8 +532,9 @@ class Gui(QtWidgets.QWidget):
         self.calculate_vor = Vorwaertsprojektion(angle_value, self.data_gross, angle_steps, self.sinogramm)
         self.calculate_vor.signal.connect(self.animation)
         self.calculate_vor.signal_finish.connect(self.animation_finish)
-        self.calculate_vor.start()
         self.progress_sino.setMaximum(angle_value)
+        self.calculate_vor.start()
+
         print("b")
 
 
@@ -521,33 +546,42 @@ class Gui(QtWidgets.QWidget):
         
 
     def animation(self, alpha):
-        self.progress_sino.setValue(alpha + 1)
+        self.progress_sino.setValue(alpha)
         self.img2.setImage(self.sinogramm)
 
 
-    def animation_finish(self, alpha):
+    def animation_finish(self):
         self.progress_sino.setValue(self.progress_sino.maximum())
+        self.save_sinoButton.setEnabled(True)
+        self.groupBox_rueck.setEnabled(True)
+        self.groupBox_vor.setEnabled(True)
+
 
     def animation_r(self, i):
-        #self.progress_sino.setValue(i + 1)
+        self.progress_rueck.setValue(i)
         self.img3.setImage(self.image_r)
 
 
     def animation_r_finish(self, i):
-        #self.progress_sino.setValue(self.progress_sino.maximum())
+        self.progress_rueck.setValue(self.progress_rueck.maximum())
         # durch vorherige Vorwärtsprojektion (dabei wurde Ursprungsbild fuer
         # eine verlustfreie Drehung vergroeßert) ist um rueckprojeziertes
         # Bild ein Kreis
         # dieser wird nun entfernt
         diff = (len(self.image_r) - self.laenge_original) // 2
+        print(diff)
+        print(self.laenge_original)
         self.image_r = self.image_r[diff:self.laenge_original+diff, diff:self.laenge_original+diff]
         # Rückprojektion darstellen auf grafischer Oberflaeche
         self.img3.setImage(self.image_r)
         #print(np.shape(self.image_r))
         # TODO: noch nicht fertig
         # Differenzbild ezeugen und grafisch darstellen
-        self.diff_img = np.abs(self.data - self.image_r)
-        self.img4.setImage(self.diff_img)
+        if self.data is not None:
+            self.diff_img = np.abs(self.data - self.image_r)
+            self.img4.setImage(self.diff_img)
+        self.save_imgButton.setEnabled(True)
+        self.groupBox_rueck.setEnabled(True)
 
     # TODO: erklaeren lassen! Umbenennung Button
     def saveButtonPress(self):
@@ -631,18 +665,16 @@ class Gui(QtWidgets.QWidget):
         # TODO: Bei Cancel stürzt Programm ab??
         # TODO: was passiert wenn es kein File gibt?
         if fileName:
+            self.clearButtonPress()
             # Einlesen der Daten
             self.sinogramm_plus_info = np.load(fileName)
             # nachdem neue Datei geladen wird sollen vorherige Grafiken
-            # aus allen Bildern entfernt werden
-            self.img1.clear()
-            self.img2.clear()
-            self.img3.clear()
-            self.img4.clear()
-            self.laenge_original = self.sinogramm_plus_info[0, 0]
-            self.winkel_max = self.sinogramm_plus_info[0, 1]
+            # aus allen Bildern entfernt werden und vorherige Daten löschen
+            self.laenge_original = np.int(self.sinogramm_plus_info[0, 0])
+            self.winkel_max = np.int(self.sinogramm_plus_info[0, 1])
             self.sinogramm = self.sinogramm_plus_info[1:]
             self.img2.setImage(self.sinogramm)
+            self.groupBox_rueck.setEnabled(True)
 
 
 
@@ -710,7 +742,7 @@ class Rueckwaertsprojektion(QtCore.QThread):
             # Drehung
             sino2d_transform = drehung(sino2d, -self.alpha_r[i])
             self.image_r += sino2d_transform
-            self.signal.emit(i)
+            self.signal.emit(self.alpha_r[i])
         self.signal_finish.emit(0)
 
 

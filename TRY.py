@@ -8,6 +8,7 @@ Created on Thu Jan 10 13:41:27 2019
 import sys
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
+from PyQt5.QtWidgets import *
 
 
 class tooldemo(QMainWindow):
@@ -16,10 +17,11 @@ class tooldemo(QMainWindow):
       layout = QVBoxLayout()
       tb = self.addToolBar("File")
 
-      new = QAction(QIcon("exit24.png"), "new", self)
+      new = QAction("new", self)
       tb.addAction(new)
 
-      open = QAction(QIcon("open.bmp"), "open", self)
+      open = QAction("open", self)
+      open.setEnabled()
       tb.addAction(open)
       save = QAction(QIcon("save.bmp"), "save", self)
       tb.addAction(save)

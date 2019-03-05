@@ -20,8 +20,7 @@ from PyQt5.QtWidgets import (QFileDialog, QPushButton, QGridLayout,
                              QVBoxLayout, QHBoxLayout, QSlider, QRadioButton,
                              QGroupBox, QProgressBar, QCheckBox, QLabel,
                              QSpinBox, QComboBox, QToolTip, qApp)
-# TODO: wie richtig installieren?
-import PIL as pil
+
 import pyqtgraph
 
 
@@ -411,18 +410,18 @@ class Gui(QtWidgets.QWidget):
         None
         """
         self.img3.clear()
-        alpha_r = np.linspace(0, self.winkel_max, len(self.sinogramm), endpoint=False)
-        self.image_r = np.zeros((len(self.sinogramm[0]), len(self.sinogramm[0])))
-        filterart = self.radio_mit.isChecked()
         # Anwendung Filter vor Rueckprojektion
         self.sinogramm_filter = np.copy(self.sinogramm)
         # Auswahl Filterung auf grafischen Oberfläche
+
+        filterart = self.radio_mit.isChecked()
         if filterart:
             # abspeichern des aktuell ausgewaehlten Filters
             self.currentchoice = self.cb_filter.currentText()
             if self.currentchoice == "Ramp":
                 # Erstellung Rampfilter
                 ramp = np.abs(np.fft.fftshift(np.fft.fftfreq(len(self.sinogramm[0]))))
+
                 for i in range(len(self.sinogramm)):
                     # Fouriertransformation
                     fourier_image = np.fft.fft(self.sinogramm[i])
@@ -441,21 +440,18 @@ class Gui(QtWidgets.QWidget):
             # Drehung
             sino2d_transform = drehung(sino2d, -alpha_r[i])
             self.image_r += sino2d_transform
-        self.self_image_r = self.image_r[self.laenge_original:self.laenge_original+1,
-                     self.laenge_original:self.laenge_original+1]
-        # Rückprojektion darstellen auf grafischer Oberflaeche
-        self.img3.setImage(self.image_r)
         # durch vorherige Vorwärtsprojektion (dabei wurde Ursprungsbild fuer
         # eine verlustfreie Drehung vergroeßert) ist um rueckprojeziertes
         # Bild ein Kreis
         # dieser wird nun entfernt
         diff = (len(self.image_r) - self.laenge_original) // 2
         self.image_r = self.image_r[diff:self.laenge_original+diff, diff:self.laenge_original+diff]
+        # Rückprojektion darstellen auf grafischer Oberflaeche
         self.img3.setImage(self.image_r)
         #print(np.shape(self.image_r))
         # TODO: noch nicht fertig
         # Differenzbild ezeugen und grafisch darstellen
-        self.diff_img = pil.ImageChops.subtract(self.data, self.image_r)
+        self.diff_img = np.abs(self.data - self.image_r)
         self.img4.setImage(self.diff_img)
 
 
@@ -526,6 +522,7 @@ class Gui(QtWidgets.QWidget):
         self.calculate_vor.signal.connect(self.animation)
         self.calculate_vor.signal_finish.connect(self.animation_finish)
         self.calculate_vor.start()
+        self.progress_sino.setMaximum(angle_value)
         print("b")
 
 
@@ -537,8 +534,6 @@ class Gui(QtWidgets.QWidget):
         
 
     def animation(self, alpha):
-        # TODO: hier Einstellen, ob 180° oder 360° mit self.angle_value
-        self.progress_sino.setMaximum(180)
         self.progress_sino.setValue(alpha + 1)
         self.img2.setImage(self.sinogramm)
 
@@ -702,7 +697,6 @@ if __name__ == "__main__":
     # TODO: falsche
     # TODO: alle Buttons richtig verknüpfen, richtig setzen
     # TODO: MenuToolBar oben, grafische Oberfläche überarbeiten
-    # TODO: Beschreibung wenn man auf Cursor raufkommt
     # auswahl filter nur wenn gefiltert angeklickt ist
     # threading, Animation
     
@@ -713,4 +707,4 @@ if __name__ == "__main__":
     # ausgrauen, rescalen?
     # TODO: bei richtigem CT funktioniert Rueckreko nicht
     # TODO: CT Tisch ebenfalls animieren
-    # TODO: File dialog Ordner (idea) welches Abgabeformat?
+    # TODO: File dialog Ordner (idea) welches Abgabeformat?r

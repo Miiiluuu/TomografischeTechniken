@@ -186,6 +186,7 @@ class Gui(QtWidgets.QWidget):
         self.clearButton.clicked.connect(self.clearButtonPress)
         self.vbox_button_vor.addWidget(self.clearButton)
         # AbbruchButton hinzufuegen
+        # TODO: Reko abbrechen!
         self.breakButton = QPushButton("Close")
         self.breakButton.setToolTip('Abbruch des Programms.')
         self.breakButton.clicked.connect(qApp.quit)
@@ -421,38 +422,24 @@ class Gui(QtWidgets.QWidget):
             if self.currentchoice == "Ramp":
                 # Erstellung Rampfilter
                 ramp = np.abs(np.fft.fftshift(np.fft.fftfreq(len(self.sinogramm[0]))))
-
-                for i in range(len(self.sinogramm)):
-                    # Fouriertransformation
-                    fourier_image = np.fft.fft(self.sinogramm[i])
-                    fourier_image = np.fft.fftshift(fourier_image)
-                    # Anwenden des Filters auf Bild:
-                    # Multiplikation im Frequenzraum
-                    fourier_gefiltert = fourier_image * ramp
-                    # Bild zurueckshiften
-                    fourier_gefiltert = np.fft.ifftshift(fourier_gefiltert)
-                    # Ruecktransformation Frequenz- in Ortsraum
-                    self.sinogramm_filter[i] = np.fft.ifft(fourier_gefiltert)
+                # Fouriertransformation
+                fourier_image = np.fft.fft(self.sinogramm)
+                fourier_image = np.fft.fftshift(fourier_image)
+                # Anwenden des Filters auf Bild:
+                # Multiplikation im Frequenzraum
+                fourier_gefiltert = fourier_image * ramp
+                # Bild zurueckshiften
+                fourier_gefiltert = np.fft.ifftshift(fourier_gefiltert)
+                # Ruecktransformation Frequenz- in Ortsraum
+                self.sinogramm_filter = np.real(np.fft.ifft(fourier_gefiltert))
         alpha_r = np.linspace(0, self.winkel_max, len(self.sinogramm_filter), endpoint=False)
         self.image_r = np.zeros((len(self.sinogramm_filter[0]), len(self.sinogramm_filter[0])))
-        for i in range(len(self.sinogramm_filter)):
-            sino2d = self.sinogramm_filter[i] * np.ones_like(self.image_r)
-            # Drehung
-            sino2d_transform = drehung(sino2d, -alpha_r[i])
-            self.image_r += sino2d_transform
-        # durch vorherige Vorwärtsprojektion (dabei wurde Ursprungsbild fuer
-        # eine verlustfreie Drehung vergroeßert) ist um rueckprojeziertes
-        # Bild ein Kreis
-        # dieser wird nun entfernt
-        diff = (len(self.image_r) - self.laenge_original) // 2
-        self.image_r = self.image_r[diff:self.laenge_original+diff, diff:self.laenge_original+diff]
-        # Rückprojektion darstellen auf grafischer Oberflaeche
-        self.img3.setImage(self.image_r)
-        #print(np.shape(self.image_r))
-        # TODO: noch nicht fertig
-        # Differenzbild ezeugen und grafisch darstellen
-        self.diff_img = np.abs(self.data - self.image_r)
-        self.img4.setImage(self.diff_img)
+        # hier Thread da rechenaufwendig
+        self.calculate_rueck = Rueckwaertsprojektion(self.sinogramm_filter, self.image_r, alpha_r)
+        self.calculate_rueck.signal.connect(self.animation_r)
+        self.calculate_rueck.signal_finish.connect(self.animation_r_finish)
+        self.calculate_rueck.start()
+
 
 
     def loadButtonPress(self):
@@ -537,9 +524,30 @@ class Gui(QtWidgets.QWidget):
         self.progress_sino.setValue(alpha + 1)
         self.img2.setImage(self.sinogramm)
 
+
     def animation_finish(self, alpha):
         self.progress_sino.setValue(self.progress_sino.maximum())
 
+    def animation_r(self, i):
+        #self.progress_sino.setValue(i + 1)
+        self.img3.setImage(self.image_r)
+
+
+    def animation_r_finish(self, i):
+        #self.progress_sino.setValue(self.progress_sino.maximum())
+        # durch vorherige Vorwärtsprojektion (dabei wurde Ursprungsbild fuer
+        # eine verlustfreie Drehung vergroeßert) ist um rueckprojeziertes
+        # Bild ein Kreis
+        # dieser wird nun entfernt
+        diff = (len(self.image_r) - self.laenge_original) // 2
+        self.image_r = self.image_r[diff:self.laenge_original+diff, diff:self.laenge_original+diff]
+        # Rückprojektion darstellen auf grafischer Oberflaeche
+        self.img3.setImage(self.image_r)
+        #print(np.shape(self.image_r))
+        # TODO: noch nicht fertig
+        # Differenzbild ezeugen und grafisch darstellen
+        self.diff_img = np.abs(self.data - self.image_r)
+        self.img4.setImage(self.diff_img)
 
     # TODO: erklaeren lassen! Umbenennung Button
     def saveButtonPress(self):
@@ -682,6 +690,28 @@ class Vorwaertsprojektion(QtCore.QThread):
             self.signal.emit(alpha)
         self.signal_finish.emit(alpha)
 
+
+class Rueckwaertsprojektion(QtCore.QThread):
+    # fuer Animation
+    signal = QtCore.pyqtSignal(float)
+    signal_finish = QtCore.pyqtSignal(float)
+
+
+    def __init__(self, sinogramm_filter, image_r, alpha_r):
+        super().__init__()
+        #print("init")
+        self.sinogramm_filter = sinogramm_filter
+        self.image_r = image_r
+        self.alpha_r = alpha_r
+
+    def run(self):
+        for i in range(len(self.sinogramm_filter)):
+            sino2d = self.sinogramm_filter[i] * np.ones_like(self.image_r)
+            # Drehung
+            sino2d_transform = drehung(sino2d, -self.alpha_r[i])
+            self.image_r += sino2d_transform
+            self.signal.emit(i)
+        self.signal_finish.emit(0)
 
 
 if __name__ == "__main__":

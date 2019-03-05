@@ -21,7 +21,7 @@ class tooldemo(QMainWindow):
       tb.addAction(new)
 
       open = QAction("open", self)
-      open.setEnabled()
+      open.setEnabled(False)
       tb.addAction(open)
       save = QAction(QIcon("save.bmp"), "save", self)
       tb.addAction(save)

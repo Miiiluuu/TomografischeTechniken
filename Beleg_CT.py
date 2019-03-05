@@ -19,7 +19,8 @@ from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import (QFileDialog, QPushButton, QGridLayout,
                              QVBoxLayout, QHBoxLayout, QSlider, QRadioButton,
                              QGroupBox, QProgressBar, QCheckBox, QLabel,
-                             QSpinBox, QComboBox, QToolTip, qApp)
+                             QSpinBox, QComboBox, QToolTip, qApp, QMainWindow,
+                             QAction)
 
 import pyqtgraph
 
@@ -150,6 +151,14 @@ class Gui(QtWidgets.QWidget):
         self.setLayout(self.grid)
         self.grid.setSpacing(10)
         self.setWindowTitle("Wir basteln uns ein CT!")
+
+        # #self.groupBox_tb = QGroupBox("TB")
+        # self.tb = QMainWindow()
+        # self.tb.addToolBar("File")
+        # new = QAction("new", self)
+        # self.tb.addAction(new)
+        # self.grid.setLayout(self.tb)
+
         
         # Erzeugen VBox (jeweils für Vor- und Rücktransformation, diese wird
         # dem Grid hinzufügt

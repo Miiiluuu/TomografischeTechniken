@@ -19,7 +19,7 @@ from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import (QFileDialog, QPushButton, QGridLayout,
                              QVBoxLayout, QHBoxLayout, QSlider, QRadioButton,
                              QGroupBox, QProgressBar, QCheckBox, QLabel,
-                             QSpinBox, QComboBox, QToolTip)
+                             QSpinBox, QComboBox, QToolTip, qApp)
 # TODO: wie richtig installieren?
 import PIL as pil
 import pyqtgraph
@@ -170,12 +170,12 @@ class Gui(QtWidgets.QWidget):
         self.loadButton.setToolTip('Öffnet ein Bild.')
         self.loadButton.clicked.connect(self.loadButtonPress)
         self.vbox_button_vor.addWidget(self.loadButton)
-        # SaveButton hinzufuegen
-        self.saveButton = QPushButton("Save Sinogramm")
-        self.saveButton.setToolTip('Speichert Sinogramm unter selbst'
+        # SaveButton Sinogramm hinzufuegen
+        self.save_sinoButton = QPushButton("Save Sinogramm")
+        self.save_sinoButton.setToolTip('Speichert Sinogramm unter selbst'
                                    'gewählten Dateinamen ab.')
-        self.saveButton.clicked.connect(self.saveButtonPress)
-        self.vbox_button_vor.addWidget(self.saveButton)
+        self.save_sinoButton.clicked.connect(self.saveButtonPress)
+        self.vbox_button_vor.addWidget(self.save_sinoButton)
         # Knopf zum Laden des Sinogramms
         self.loadsinoButton = QPushButton("Load Sinogramm")
         self.loadsinoButton.setToolTip('Lädt ein abgespeichertes Sinogramm.')
@@ -186,7 +186,19 @@ class Gui(QtWidgets.QWidget):
         self.clearButton.setToolTip('Entfernt alle vorherig geladenen Bilder.')
         self.clearButton.clicked.connect(self.clearButtonPress)
         self.vbox_button_vor.addWidget(self.clearButton)
-        
+        # AbbruchButton hinzufuegen
+        self.breakButton = QPushButton("Close")
+        self.breakButton.setToolTip('Abbruch des Programms.')
+        self.breakButton.clicked.connect(qApp.quit)
+        self.vbox_button_vor.addWidget(self.breakButton)
+        # SaveButton rückprojiziertes Bild hinzufuegen
+        self.save_imgButton = QPushButton("Save Reko-bild")
+        self.save_imgButton.setToolTip('Speichert rückprojiziertes Bild'
+                                       ' unter selbst gewählten Dateinamen'
+                                       ' ab.')
+        self.save_imgButton.clicked.connect(self.save_imgButtonPress)
+        self.vbox_button_vor.addWidget(self.save_imgButton)
+
         # Auswahlmoeglichkeiten fuer Vorwärtsprojektion
         # ist Uebersicht zur Auswahl Parameter fuer Vorwaertsprojektion
         # es wird HBox erzeugt
@@ -446,6 +458,7 @@ class Gui(QtWidgets.QWidget):
         self.diff_img = pil.ImageChops.subtract(self.data, self.image_r)
         self.img4.setImage(self.diff_img)
 
+
     def loadButtonPress(self):
         """
         Öffnet file dialog um eine Datei zu laden/grafisch darzustellen.
@@ -571,6 +584,30 @@ class Gui(QtWidgets.QWidget):
                 np.save(file, self.sinogramm_plus_info)
 
 
+    def save_imgButtonPress(self):
+        """
+        In einem sich oeffnenden file dialog kann das erstellte rückprojizierte
+        Bild unter selbst gewaehlten Dateinamen abgespeichert werden.
+
+        Parameters
+        ----------
+        None
+
+        Return
+        ----------
+        None
+        """
+        options = QFileDialog.Options()
+        options |= QFileDialog.DontUseNativeDialog
+        fileName, _ = QFileDialog.getSaveFileName(self, "Save file", "Reko_img.milu",
+                                                  "rückprojizierte Bilder (*.milu)",
+                                                  options=options)
+        if fileName:
+            # Speichern der Daten
+            with open(fileName, "wb") as file:
+                np.save(file, self.self.image_r)
+
+
     # TODO: erklaeren lassen!
     def loadsinoButtonPress(self):
         """
@@ -675,3 +712,5 @@ if __name__ == "__main__":
     # Progress, Animation Rueck, andere Filter, Speichern rueck Bilder
     # ausgrauen, rescalen?
     # TODO: bei richtigem CT funktioniert Rueckreko nicht
+    # TODO: CT Tisch ebenfalls animieren
+    # TODO: File dialog Ordner (idea) welches Abgabeformat?

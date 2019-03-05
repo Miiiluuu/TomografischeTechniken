@@ -16,7 +16,7 @@ class tooldemo(QMainWindow):
       layout = QVBoxLayout()
       tb = self.addToolBar("File")
 
-      new = QAction(QIcon("new.bmp"), "new", self)
+      new = QAction(QIcon("exit24.png"), "new", self)
       tb.addAction(new)
 
       open = QAction(QIcon("open.bmp"), "open", self)

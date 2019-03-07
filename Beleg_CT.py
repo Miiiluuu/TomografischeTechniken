@@ -14,13 +14,15 @@ import sys
 import numpy as np
 import matplotlib.pyplot as plt
 from PyQt5 import QtCore
+from PyQt5.QtGui import QIcon
 from scipy.ndimage import map_coordinates
 from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import (QFileDialog, QPushButton, QGridLayout,
                              QVBoxLayout, QHBoxLayout, QSlider, QRadioButton,
                              QGroupBox, QProgressBar, QCheckBox, QLabel,
                              QSpinBox, QComboBox, QToolTip, qApp, QMainWindow,
-                             QAction)
+                             QAction, QCheckBox)
+
 #from PyQt5.QtWidgets.QMainWindow import QIcon
 
 import pyqtgraph
@@ -163,8 +165,7 @@ class Gui(QtWidgets.QWidget):
         # Tollbar erzeugen, wo einige Buttons drin
         self.tb = toolbar
         # OpenButton hinzufügen
-        self.load = QAction("Open", self)
-        #self.load.setIcon(#exit24.bmp')
+        self.load = QAction(QIcon('exit24.bmp'), "Open", self)
         self.load.setToolTip('Öffnet ein Bild.')
         self.tb.addAction(self.load)
         self.load.triggered.connect(self.loadButtonPress)
@@ -219,17 +220,6 @@ class Gui(QtWidgets.QWidget):
         self.grid.addLayout(self.vbox_button_rueck, 1, 0)
         self.vbox_button_rueck.addStretch(1)
 
-        
-        # Hinzufuegen von Buttons und Ähnlichem zur VBox in grafischen
-        # Oberfläche
-        # TODO: einige Buttons in QToolBar stecken(funktioniert nicht wirklich
-        # TODO: mit Icon ...
-
-
-
-
-
-
 
         # Auswahlmoeglichkeiten fuer Vorwärtsprojektion
         # ist Uebersicht zur Auswahl Parameter fuer Vorwaertsprojektion
@@ -265,6 +255,12 @@ class Gui(QtWidgets.QWidget):
         self.vbox_anglesteps.addWidget(self.sb_anglesteps)
         self.groupBox_anglesteps.setLayout(self.vbox_anglesteps)
         self.hbox_v.addWidget(self.groupBox_anglesteps)
+        # erstellt Checkbox, zur Auswahl, ob während Berechnung Animation
+        # dargestellt werden soll
+        self.ani_v = QCheckBox("mit Animation?", self)
+        self.ani_v.setChecked(True)
+        # Hinzufuegen zum Layout (VBox)
+        self.vbox_v.addWidget(self.ani_v)
         # TODO: je nachdem ob 180° oder 360° ausgewählt wurde
         # TODO: auch eine für Rückproj machen ...
         # erstellt eine Progressbar, welche den Fortschritt in der
@@ -317,6 +313,12 @@ class Gui(QtWidgets.QWidget):
         self.hbox_r.addWidget(self.groupBox_cb)
         self.radio_mit.clicked.connect(self.activate_cb_filter)
         self.radio_ohne.clicked.connect(self.deactivate_cb_filter)
+        # erstellt Checkbox, zur Auswahl, ob während Berechnung Animation
+        # dargestellt werden soll
+        self.ani_r = QCheckBox("mit Animation?", self)
+        self.ani_r.setChecked(True)
+        # Hinzufuegen zum Layout (VBox)
+        self.vbox_r.addWidget(self.ani_r)
         # erstellt eine Progressbar, welche den Fortschritt in der
         # Vorwaertsprojektion (des Sinogramms) darstellt.
         self.progress_rueck = QProgressBar()
@@ -557,18 +559,24 @@ class Gui(QtWidgets.QWidget):
         angle_steps = self.sb_anglesteps.value()
         self.sinogramm = np.zeros([angle_steps, len(self.data_gross)])
         # hier Thread!!!
-        self.calculate_vor = Vorwaertsprojektion(angle_value, self.data_gross, angle_steps, self.sinogramm)
+        # Animation CT Tisch
+        self.data_gms = np.zeros_like(self.data_gross)
+        self.cttisch = np.zeros_like(self.data)
+        self.cttisch[-3:-1] = np.max(self.data)
+        self.cttisch = drehung_vorverarbeitung(self.cttisch)
+        self.calculate_vor = Vorwaertsprojektion(self.data_gms, angle_value, self.cttisch, self.data_gross, angle_steps, self.sinogramm)
         self.calculate_vor.signal.connect(self.animation)
         self.calculate_vor.signal_finish.connect(self.animation_finish)
         self.progress_sino.setMaximum(angle_value)
+        self.calculate_vor.signal.connect(self.animation_cttisch)
         self.calculate_vor.start()
 
         print("b")
 
 
+    def animation_cttisch(self, alpha):
+        self.img1.setImage(self.data_gms)
 
-
-        # Sinogramm darstellen auf grafischer Oberflaeche
 
 
         # TODO:threading, schneller machen, Drehung interpolieren? 
@@ -730,17 +738,21 @@ class Vorwaertsprojektion(QtCore.QThread):
     signal = QtCore.pyqtSignal(float)
     signal_finish = QtCore.pyqtSignal(float)
 
-    def __init__(self, angle_value, data_gross, angle_steps, sinogramm):
+    def __init__(self, data_gms, angle_value, cttisch, data_gross, angle_steps, sinogramm):
         super().__init__()
         print("init")
+        self.data_gms = data_gms
         self.angle_value = angle_value
         self.data_gross = data_gross
         self.angle_steps = angle_steps
         self.sinogramm = sinogramm
+        self.cttisch = cttisch
+
 
     def run(self):
         # Anzahl an Winkelschritten
         print("run")
+
         numbers_angle = np.linspace(0, self.angle_value, self.angle_steps, endpoint=False)
         for count, alpha in enumerate(numbers_angle):
             print(count)
@@ -750,8 +762,12 @@ class Vorwaertsprojektion(QtCore.QThread):
             # Bildung von Linienintegralen fuer einzelnen Rotationswinkel
             linienintegral = np.sum(data_transform, axis=0)
             self.sinogramm[count] = linienintegral
+            cttisch_dreh = drehung(self.cttisch, -alpha)
+            self.data_gms[:] = self.data_gross + cttisch_dreh
             self.signal.emit(alpha)
         self.signal_finish.emit(alpha)
+
+
 
 
 class Rueckwaertsprojektion(QtCore.QThread):
@@ -802,3 +818,5 @@ if __name__ == "__main__":
     # TODO: CT Tisch ebenfalls animieren
     # TODO: File dialog Ordner (idea) welches Abgabeformat?r
     # TODO: movie ausschaltbar
+    # TODO: Abbruchbutton zum Beenden der Rechnung (alles andere
+    # TODO: dann ausgeschaltet)

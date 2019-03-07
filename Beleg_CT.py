@@ -21,6 +21,7 @@ from PyQt5.QtWidgets import (QFileDialog, QPushButton, QGridLayout,
                              QGroupBox, QProgressBar, QCheckBox, QLabel,
                              QSpinBox, QComboBox, QToolTip, qApp, QMainWindow,
                              QAction)
+#from PyQt5.QtWidgets.QMainWindow import QIcon
 
 import pyqtgraph
 
@@ -159,17 +160,51 @@ class Gui(QtWidgets.QWidget):
         # Erzeugung uebergeordnetes Grid, in dem alle grafischen Objekte 
         # enthalten sind
         self.grid = grid
+        # Tollbar erzeugen, wo einige Buttons drin
         self.tb = toolbar
+        # OpenButton hinzufügen
+        self.load = QAction("Open", self)
+        #self.load.setIcon(#exit24.bmp')
+        self.load.setToolTip('Öffnet ein Bild.')
+        self.tb.addAction(self.load)
+        self.load.triggered.connect(self.loadButtonPress)
+        # SaveButton Sinogramm hinzufuegen
+        self.saveSino = QAction("Save Sinogramm", self)
+        self.saveSino.setEnabled(False)
+        self.saveSino.setToolTip('Speichert Sinogramm unter selbst'
+                                        'gewählten Dateinamen ab.')
+        self.tb.addAction(self.saveSino)
+        self.saveSino.triggered.connect(self.saveButtonPress)
+        # Knopf zum Laden des Sinogramms
+        self.loadSino = QAction("Load Sinogramm", self)
+        self.loadSino.setToolTip('Lädt ein abgespeichertes Sinogramm.')
+        self.tb.addAction(self.loadSino)
+        self.loadSino.triggered.connect(self.loadsinoButtonPress)
+        # ClearButton hinzufuegen
+        self.clear = QAction("Clear", self)
+        self.clear.setToolTip('Entfernt alle vorherig geladenen Bilder.')
+        self.tb.addAction(self.clear)
+        self.clear.triggered.connect(self.clearButtonPress)
+        # AbbruchButton hinzufuegen
+        # TODO: soll Berechnung abbrechen!
+        self.breaking = QAction("Close", self)
+        self.breaking.setEnabled(False)
+        self.breaking.setToolTip('Abbruch des Programms.')
+        self.tb.addAction(self.breaking)
+        self.breaking.triggered.connect(qApp.quit)
+        # SaveButton rückprojiziertes Bild hinzufuegen
+        self.save_img = QAction("Save Reko-bild", self)
+        self.save_img.setEnabled(False)
+        self.save_img.setToolTip('Speichert rückprojiziertes Bild'
+                                       ' unter selbst gewählten Dateinamen'
+                                       ' ab.')
+        self.tb.addAction(self.save_img)
+        self.breaking.triggered.connect(self.save_imgButtonPress)
 
-        self.new = QAction("load", self)
-        self.tb.addAction(self.new)
-        self.new.triggered.connect(self.loadButtonPress)
+
 
         self.grid.setSpacing(10)
         self.setWindowTitle("Wir basteln uns ein CT!")
-
-
-        #self.grid.addLayout(self.tb, 1, 0)
 
 
 
@@ -189,43 +224,12 @@ class Gui(QtWidgets.QWidget):
         # Oberfläche
         # TODO: einige Buttons in QToolBar stecken(funktioniert nicht wirklich
         # TODO: mit Icon ...
-        # OpenButton hinzufügen
-        self.loadButton = QPushButton("Open")
-        self.loadButton.setToolTip('Öffnet ein Bild.')
-        self.loadButton.clicked.connect(self.loadButtonPress)
-        self.vbox_button_vor.addWidget(self.loadButton)
-        # SaveButton Sinogramm hinzufuegen
-        self.save_sinoButton = QPushButton("Save Sinogramm")
-        self.save_sinoButton.setEnabled(False)
-        self.save_sinoButton.setToolTip('Speichert Sinogramm unter selbst'
-                                   'gewählten Dateinamen ab.')
-        self.save_sinoButton.clicked.connect(self.saveButtonPress)
-        self.vbox_button_vor.addWidget(self.save_sinoButton)
-        # Knopf zum Laden des Sinogramms
-        self.loadsinoButton = QPushButton("Load Sinogramm")
-        self.loadsinoButton.setToolTip('Lädt ein abgespeichertes Sinogramm.')
-        self.loadsinoButton.clicked.connect(self.loadsinoButtonPress)
-        self.vbox_button_vor.addWidget(self.loadsinoButton)
-        # ClearButton hinzufuegen
-        self.clearButton = QPushButton("Clear")
-        self.clearButton.setToolTip('Entfernt alle vorherig geladenen Bilder.')
-        self.clearButton.clicked.connect(self.clearButtonPress)
-        self.vbox_button_vor.addWidget(self.clearButton)
-        # AbbruchButton hinzufuegen
-        # TODO: Reko abbrechen!
-        self.breakButton = QPushButton("Close")
-        self.breakButton.setEnabled(False)
-        self.breakButton.setToolTip('Abbruch des Programms.')
-        self.breakButton.clicked.connect(qApp.quit)
-        self.vbox_button_vor.addWidget(self.breakButton)
-        # SaveButton rückprojiziertes Bild hinzufuegen
-        self.save_imgButton = QPushButton("Save Reko-bild")
-        self.save_imgButton.setEnabled(False)
-        self.save_imgButton.setToolTip('Speichert rückprojiziertes Bild'
-                                       ' unter selbst gewählten Dateinamen'
-                                       ' ab.')
-        self.save_imgButton.clicked.connect(self.save_imgButtonPress)
-        self.vbox_button_vor.addWidget(self.save_imgButton)
+
+
+
+
+
+
 
         # Auswahlmoeglichkeiten fuer Vorwärtsprojektion
         # ist Uebersicht zur Auswahl Parameter fuer Vorwaertsprojektion
@@ -429,11 +433,11 @@ class Gui(QtWidgets.QWidget):
         self.img3.clear()
         self.img4.clear()
         self.data = None
-        self.save_imgButton.setEnabled(False)
-        self.save_sinoButton.setEnabled(False)
+        self.save_img.setEnabled(False)
+        self.saveSino.setEnabled(False)
         self.progress_sino.reset()
         self.progress_rueck.reset()
-        self.breakButton.setEnabled(False)
+        self.breaking.setEnabled(False)
         self.groupBox_vor.setEnabled(False)
         self.groupBox_rueck.setEnabled(False)
 
@@ -576,7 +580,7 @@ class Gui(QtWidgets.QWidget):
 
     def animation_finish(self):
         self.progress_sino.setValue(self.progress_sino.maximum())
-        self.save_sinoButton.setEnabled(True)
+        self.saveSino.setEnabled(True)
         self.groupBox_rueck.setEnabled(True)
         self.groupBox_vor.setEnabled(True)
 
@@ -604,7 +608,7 @@ class Gui(QtWidgets.QWidget):
         if self.data is not None:
             self.diff_img = np.abs(self.data - self.image_r)
             self.img4.setImage(self.diff_img)
-        self.save_imgButton.setEnabled(True)
+        self.save_img.setEnabled(True)
         self.groupBox_rueck.setEnabled(True)
 
     # TODO: erklaeren lassen! Umbenennung Button

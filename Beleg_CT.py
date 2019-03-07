@@ -795,3 +795,4 @@ if __name__ == "__main__":
     # TODO: bei richtigem CT funktioniert Rueckreko nicht
     # TODO: CT Tisch ebenfalls animieren
     # TODO: File dialog Ordner (idea) welches Abgabeformat?r
+    # TODO: movie ausschaltbar

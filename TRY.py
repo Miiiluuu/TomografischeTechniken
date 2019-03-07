@@ -12,22 +12,22 @@ from PyQt5.QtWidgets import *
 
 
 class tooldemo(QMainWindow):
-   def __init__(self, parent=None):
-      super(tooldemo, self).__init__(parent)
-      layout = QVBoxLayout()
-      tb = self.addToolBar("File")
+     def __init__(self, parent=None):
+       super(tooldemo, self).__init__(parent)
+       layout = QVBoxLayout()
+       tb = self.addToolBar("File")
 
-      new = QAction("new", self)
-      tb.addAction(new)
+       new = QAction("new", self)
+       tb.addAction(new)
 
-      open = QAction("open", self)
-      open.setEnabled(False)
-      tb.addAction(open)
-      save = QAction(QIcon("save.bmp"), "save", self)
-      tb.addAction(save)
-      tb.actionTriggered[QAction].connect(self.toolbtnpressed)
-      self.setLayout(layout)
-      self.setWindowTitle("toolbar demo")
+       open = QAction("open", self)
+       open.setEnabled(False)
+       tb.addAction(open)
+       # save = QAction(QIcon("save.bmp"), "save", self)
+       # tb.addAction(save)
+       # tb.actionTriggered[QAction].connect(self.toolbtnpressed)
+       self.setLayout(layout)
+       self.setWindowTitle("toolbar demo")
 
    def toolbtnpressed(self, a):
       print("pressed tool button is", a.text())

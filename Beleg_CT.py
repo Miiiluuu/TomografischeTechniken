@@ -138,8 +138,19 @@ def drehung(image, grad):
                                          (x_transform[bed] + pixel_mitte)]))
     return image_transform
 
-class Gui(QtWidgets.QWidget):
+
+class MainGui(QtWidgets.QMainWindow):
     def __init__(self):
+        super().__init__()
+        self.tb = self.addToolBar("")
+        self.grid = QGridLayout()
+        self.central = Gui(self.grid, self.tb)
+        self.central.setLayout(self.grid)
+        self.setCentralWidget(self.central)
+
+
+class Gui(QtWidgets.QWidget):
+    def __init__(self, grid, toolbar):
         super().__init__()
 
         self.data = None
@@ -147,17 +158,20 @@ class Gui(QtWidgets.QWidget):
         # grafische Oberflaeche gestalten
         # Erzeugung uebergeordnetes Grid, in dem alle grafischen Objekte 
         # enthalten sind
-        self.grid = QGridLayout()
-        self.setLayout(self.grid)
+        self.grid = grid
+        self.tb = toolbar
+
+        self.new = QAction("load", self)
+        self.tb.addAction(self.new)
+        self.new.triggered.connect(self.loadButtonPress)
+
         self.grid.setSpacing(10)
         self.setWindowTitle("Wir basteln uns ein CT!")
 
-        # #self.groupBox_tb = QGroupBox("TB")
-        # self.tb = QMainWindow()
-        # self.tb.addToolBar("File")
-        # new = QAction("new", self)
-        # self.tb.addAction(new)
-        # self.grid.setLayout(self.tb)
+
+        #self.grid.addLayout(self.tb, 1, 0)
+
+
 
         
         # Erzeugen VBox (jeweils für Vor- und Rücktransformation, diese wird
@@ -169,6 +183,7 @@ class Gui(QtWidgets.QWidget):
         self.vbox_button_rueck = QVBoxLayout()
         self.grid.addLayout(self.vbox_button_rueck, 1, 0)
         self.vbox_button_rueck.addStretch(1)
+
         
         # Hinzufuegen von Buttons und Ähnlichem zur VBox in grafischen
         # Oberfläche
@@ -697,7 +712,8 @@ class Gui(QtWidgets.QWidget):
 
 def main():
     app = QtWidgets.QApplication(sys.argv)
-    ui = Gui()
+    ui = MainGui()
+
     # TODO: Title
     ui.show()
     sys.exit(app.exec_())

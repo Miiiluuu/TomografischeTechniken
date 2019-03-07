@@ -566,6 +566,8 @@ class Gui(QtWidgets.QWidget):
         print("b")
 
 
+
+
         # Sinogramm darstellen auf grafischer Oberflaeche
 
 
@@ -665,7 +667,7 @@ class Gui(QtWidgets.QWidget):
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
         fileName, _ = QFileDialog.getSaveFileName(self, "Save file", "Reko_img.milu",
-                                                  "rückprojizierte Bilder (*.milu)",
+                                                  "rückprojizierte Bilder (*.npy)",
                                                   options=options)
         if fileName:
             # Speichern der Daten

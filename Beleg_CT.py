@@ -315,10 +315,10 @@ class Gui(QtWidgets.QWidget):
         self.radio_ohne.clicked.connect(self.deactivate_cb_filter)
         # erstellt Checkbox, zur Auswahl, ob während Berechnung Animation
         # dargestellt werden soll
-        self.ani_r = QCheckBox("mit Animation?", self)
-        self.ani_r.setChecked(True)
+        #self.ani_r = QCheckBox("mit Animation?", self)
+        #self.ani_r.setChecked(True)
         # Hinzufuegen zum Layout (VBox)
-        self.vbox_r.addWidget(self.ani_r)
+        #self.vbox_r.addWidget(self.ani_r)
         # erstellt eine Progressbar, welche den Fortschritt in der
         # Vorwaertsprojektion (des Sinogramms) darstellt.
         self.progress_rueck = QProgressBar()
@@ -568,13 +568,33 @@ class Gui(QtWidgets.QWidget):
         self.cttisch[-3:-1] = np.max(self.data)
         self.cttisch = drehung_vorverarbeitung(self.cttisch)
         self.calculate_vor = Vorwaertsprojektion(self.data_gms, angle_value, self.cttisch, self.data_gross, angle_steps, self.sinogramm)
-        self.calculate_vor.signal.connect(self.animation)
-        self.calculate_vor.signal_finish.connect(self.animation_finish)
+        #self.ani_v.stateChanged.connect(self.choice_ani)
+        animation = self.ani_v.isChecked()
+        if animation:
+            print("if")
+            self.calculate_vor.signal.connect(self.animation)
+            self.calculate_vor.signal_finish.connect(self.animation_finish)
+        else:
+            print("else")
+            #self.progress_sino.setValue(alpha)
+            #self.img2.setImage(self.sinogramm)
+            self.calculate_vor.signal_finish.connect(self.animation_finish)
         self.progress_sino.setMaximum(angle_value)
         self.calculate_vor.signal.connect(self.animation_cttisch)
         self.calculate_vor.start()
 
         print("b")
+        # TODO: clear nach einer Vorwärtsprojektion
+
+
+    def choice_ani(self):
+        if self.ani_v.isChecked() == True:
+            print("if")
+            self.calculate_vor.signal.connect(self.animation)
+            self.calculate_vor.signal_finish.connect(self.animation_finish)
+        else:
+            print("else")
+            self.img2.setImage(self.sinogramm)
 
 
     def animation_cttisch(self, alpha):
@@ -589,9 +609,11 @@ class Gui(QtWidgets.QWidget):
     def animation(self, alpha):
         self.progress_sino.setValue(alpha)
         self.img2.setImage(self.sinogramm)
+        print("a")
 
 
-    def animation_finish(self):
+    def animation_finish(self, alpha):
+        self.img2.setImage(self.sinogramm)
         self.progress_sino.setValue(self.progress_sino.maximum())
         self.saveSino.setEnabled(True)
         self.groupBox_rueck.setEnabled(True)

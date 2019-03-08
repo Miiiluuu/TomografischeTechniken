@@ -332,6 +332,9 @@ class Gui(QtWidgets.QWidget):
         self.rueckButton.clicked.connect(self.rueckButtonPress)
         self.vbox_r.addWidget(self.rueckButton, 0, QtCore.Qt.AlignCenter)
         self.groupBox_rueck.setEnabled(False)
+        # TODO: wenn rückprojektion sollte danach vorwaärtsprojektion trotzdem wieder
+        # TODO: anklickbar sein
+        # TODO: nach Rueck nochmal rueck: vorher clearen
 
 
         # TODO: Verhaeltnisse Bilder zueinander
@@ -820,3 +823,4 @@ if __name__ == "__main__":
     # TODO: movie ausschaltbar
     # TODO: Abbruchbutton zum Beenden der Rechnung (alles andere
     # TODO: dann ausgeschaltet)
+

@@ -258,7 +258,7 @@ class Gui(QtWidgets.QWidget):
         # erstellt Checkbox, zur Auswahl, ob während Berechnung Animation
         # dargestellt werden soll
         self.ani_v = QCheckBox("mit Animation?")
-        #self.ani_v.setChecked(True)
+        self.ani_v.setChecked(True)
         # Hinzufuegen zum Layout (VBox)
         self.vbox_v.addWidget(self.ani_v)
         # TODO: je nachdem ob 180° oder 360° ausgewählt wurde
@@ -315,16 +315,16 @@ class Gui(QtWidgets.QWidget):
         self.radio_ohne.clicked.connect(self.deactivate_cb_filter)
         # erstellt Checkbox, zur Auswahl, ob während Berechnung Animation
         # dargestellt werden soll
-        #self.ani_r = QCheckBox("mit Animation?", self)
-        #self.ani_r.setChecked(True)
+        self.ani_r = QCheckBox("mit Animation?")
+        self.ani_r.setChecked(True)
         # Hinzufuegen zum Layout (VBox)
-        #self.vbox_r.addWidget(self.ani_r)
+        self.vbox_r.addWidget(self.ani_r)
         # erstellt eine Progressbar, welche den Fortschritt in der
         # Vorwaertsprojektion (des Sinogramms) darstellt.
-        self.progress_rueck = QProgressBar()
-        self.progress_rueck.setStyleSheet("text-align: center;")
+        self.progress_img_r = QProgressBar()
+        self.progress_img_r.setStyleSheet("text-align: center;")
         # Hinzufuegen zum Layout (VBox)
-        self.vbox_r.addWidget(self.progress_rueck)
+        self.vbox_r.addWidget(self.progress_img_r)
         # Knopf fuer Start Rückprojektion
         self.rueckButton = QPushButton("Go")
         self.rueckButton.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
@@ -441,7 +441,7 @@ class Gui(QtWidgets.QWidget):
         self.save_img.setEnabled(False)
         self.saveSino.setEnabled(False)
         self.progress_sino.reset()
-        self.progress_rueck.reset()
+        self.progress_img_r.reset()
         self.breaking.setEnabled(False)
         self.groupBox_vor.setEnabled(False)
         self.groupBox_rueck.setEnabled(False)
@@ -490,9 +490,23 @@ class Gui(QtWidgets.QWidget):
         self.image_r = np.zeros((len(self.sinogramm_filter[0]), len(self.sinogramm_filter[0])))
         # hier Thread da rechenaufwendig
         self.calculate_rueck = Rueckwaertsprojektion(self.sinogramm_filter, self.image_r, alpha_r)
-        self.calculate_rueck.signal.connect(self.animation_r)
-        self.calculate_rueck.signal_finish.connect(self.animation_r_finish)
-        self.progress_rueck.setMaximum(self.winkel_max)
+
+        animation_rueck = self.ani_r.isChecked()
+        if animation_rueck:
+            print("if")
+            self.calculate_rueck.signal.connect(self.progress_rueck)
+            self.calculate_rueck.signal.connect(self.animation_r)
+            # print("if")
+            self.calculate_rueck.signal_finish.connect(self.animation_r_finish)
+            # print("if")
+        else:
+            print("else")
+            self.calculate_rueck.signal.connect(self.progress_rueck)
+            # self.progress_sino.setValue(alpha)
+            # self.img2.setImage(self.sinogramm)
+            self.calculate_rueck.signal_finish.connect(self.animation_r_finish)
+
+        self.progress_img_r.setMaximum(self.winkel_max)
         self.calculate_rueck.start()
         self.progress_sino.reset()
         self.groupBox_vor.setEnabled(False)
@@ -571,23 +585,23 @@ class Gui(QtWidgets.QWidget):
         # hier Thread!!!
         self.calculate_vor = Vorwaertsprojektion(self.data_gms, angle_value, self.cttisch, self.data_gross, angle_steps, self.sinogramm)
         print('vorwartsproj')
-        animation = self.ani_v.isChecked()
-        self.calculate_vor.signal.connect(self.animation)
-        self.calculate_vor.signal_finish.connect(self.animation_finish)
-
-        # if animation:
-        #     print("if")
-        #     self.calculate_vor.signal.connect(self.animation)
-        #     #print("if")
-        #     self.calculate_vor.signal_finish.connect(self.animation_finish)
-        #     #print("if")
-        # else:
-        #     print("else")
-        #     #self.progress_sino.setValue(alpha)
-        #     #self.img2.setImage(self.sinogramm)
-        #     #self.calculate_vor.signal_finish.connect(self.animation_finish)
+        animation_vor = self.ani_v.isChecked()
+        if animation_vor:
+            print("if")
+            self.calculate_vor.signal.connect(self.progress_vor)
+            self.calculate_vor.signal.connect(self.animation)
+            #print("if")
+            self.calculate_vor.signal_finish.connect(self.animation_finish)
+            self.calculate_vor.signal.connect(self.animation_cttisch)
+            #print("if")
+        else:
+            print("else")
+            self.calculate_vor.signal.connect(self.progress_vor)
+            #self.progress_sino.setValue(alpha)
+            #self.img2.setImage(self.sinogramm)
+            self.calculate_vor.signal_finish.connect(self.animation_finish)
         self.progress_sino.setMaximum(angle_value)
-        self.calculate_vor.signal.connect(self.animation_cttisch)
+
         print("start")
         self.calculate_vor.start()
 
@@ -601,35 +615,40 @@ class Gui(QtWidgets.QWidget):
         self.img1.setImage(self.data_gms)
 
 
-
         # TODO:threading, schneller machen, Drehung interpolieren? 
         # TODO: live Erzeugung Sinogramm
         
 
     def animation(self, alpha):
         print("aa")
-        self.progress_sino.setValue(alpha)
+        #self.progress_sino.setValue(alpha)
         self.img2.setImage(self.sinogramm)
         print("aa")
 
 
+    def progress_vor(self, alpha):
+        self.progress_sino.setValue(alpha)
+
+
     def animation_finish(self, alpha):
         print("bb")
-        self.img2.setImage(self.sinogramm)
         self.progress_sino.setValue(self.progress_sino.maximum())
+        self.img2.setImage(self.sinogramm)
         self.saveSino.setEnabled(True)
         self.groupBox_rueck.setEnabled(True)
         self.groupBox_vor.setEnabled(True)
         print("bb")
 
+    def progress_rueck(self, i):
+        self.progress_img_r.setValue(i)
 
     def animation_r(self, i):
-        self.progress_rueck.setValue(i)
+
         self.img3.setImage(self.image_r)
 
 
     def animation_r_finish(self, i):
-        self.progress_rueck.setValue(self.progress_rueck.maximum())
+        self.progress_img_r.setValue(self.progress_img_r.maximum())
         # durch vorherige Vorwärtsprojektion (dabei wurde Ursprungsbild fuer
         # eine verlustfreie Drehung vergroeßert) ist um rueckprojeziertes
         # Bild ein Kreis
@@ -793,7 +812,7 @@ class Vorwaertsprojektion(QtCore.QThread):
             self.sinogramm[count] = linienintegral
             cttisch_dreh = drehung(self.cttisch, -alpha)
             self.data_gms[:] = self.data_gross + cttisch_dreh
-        self.signal.emit(alpha)
+            self.signal.emit(alpha)
         self.signal_finish.emit(alpha)
 
 

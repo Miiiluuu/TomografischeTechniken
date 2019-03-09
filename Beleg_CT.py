@@ -257,8 +257,8 @@ class Gui(QtWidgets.QWidget):
         self.hbox_v.addWidget(self.groupBox_anglesteps)
         # erstellt Checkbox, zur Auswahl, ob während Berechnung Animation
         # dargestellt werden soll
-        self.ani_v = QCheckBox("mit Animation?", self)
-        self.ani_v.setChecked(True)
+        self.ani_v = QCheckBox("mit Animation?")
+        #self.ani_v.setChecked(True)
         # Hinzufuegen zum Layout (VBox)
         self.vbox_v.addWidget(self.ani_v)
         # TODO: je nachdem ob 180° oder 360° ausgewählt wurde
@@ -561,40 +561,40 @@ class Gui(QtWidgets.QWidget):
         self.winkel_max = angle_value
         angle_steps = self.sb_anglesteps.value()
         self.sinogramm = np.zeros([angle_steps, len(self.data_gross)])
-        # hier Thread!!!
         # Animation CT Tisch
+        print('ani ct')
         self.data_gms = np.zeros_like(self.data_gross)
         self.cttisch = np.zeros_like(self.data)
         self.cttisch[-3:-1] = np.max(self.data)
         self.cttisch = drehung_vorverarbeitung(self.cttisch)
+        print("vordreh ct")
+        # hier Thread!!!
         self.calculate_vor = Vorwaertsprojektion(self.data_gms, angle_value, self.cttisch, self.data_gross, angle_steps, self.sinogramm)
-        #self.ani_v.stateChanged.connect(self.choice_ani)
+        print('vorwartsproj')
         animation = self.ani_v.isChecked()
-        if animation:
-            print("if")
-            self.calculate_vor.signal.connect(self.animation)
-            self.calculate_vor.signal_finish.connect(self.animation_finish)
-        else:
-            print("else")
-            #self.progress_sino.setValue(alpha)
-            #self.img2.setImage(self.sinogramm)
-            self.calculate_vor.signal_finish.connect(self.animation_finish)
+        self.calculate_vor.signal.connect(self.animation)
+        self.calculate_vor.signal_finish.connect(self.animation_finish)
+
+        # if animation:
+        #     print("if")
+        #     self.calculate_vor.signal.connect(self.animation)
+        #     #print("if")
+        #     self.calculate_vor.signal_finish.connect(self.animation_finish)
+        #     #print("if")
+        # else:
+        #     print("else")
+        #     #self.progress_sino.setValue(alpha)
+        #     #self.img2.setImage(self.sinogramm)
+        #     #self.calculate_vor.signal_finish.connect(self.animation_finish)
         self.progress_sino.setMaximum(angle_value)
         self.calculate_vor.signal.connect(self.animation_cttisch)
+        print("start")
         self.calculate_vor.start()
 
         print("b")
         # TODO: clear nach einer Vorwärtsprojektion
 
 
-    def choice_ani(self):
-        if self.ani_v.isChecked() == True:
-            print("if")
-            self.calculate_vor.signal.connect(self.animation)
-            self.calculate_vor.signal_finish.connect(self.animation_finish)
-        else:
-            print("else")
-            self.img2.setImage(self.sinogramm)
 
 
     def animation_cttisch(self, alpha):
@@ -607,17 +607,20 @@ class Gui(QtWidgets.QWidget):
         
 
     def animation(self, alpha):
+        print("aa")
         self.progress_sino.setValue(alpha)
         self.img2.setImage(self.sinogramm)
-        print("a")
+        print("aa")
 
 
     def animation_finish(self, alpha):
+        print("bb")
         self.img2.setImage(self.sinogramm)
         self.progress_sino.setValue(self.progress_sino.maximum())
         self.saveSino.setEnabled(True)
         self.groupBox_rueck.setEnabled(True)
         self.groupBox_vor.setEnabled(True)
+        print("bb")
 
 
     def animation_r(self, i):
@@ -774,13 +777,14 @@ class Vorwaertsprojektion(QtCore.QThread):
         self.cttisch = cttisch
 
 
+
     def run(self):
         # Anzahl an Winkelschritten
         print("run")
 
         numbers_angle = np.linspace(0, self.angle_value, self.angle_steps, endpoint=False)
         for count, alpha in enumerate(numbers_angle):
-            print(count)
+            #print(count)
             # TODO: Progressbar raus aus Thread!
             # Drehung
             data_transform = drehung(self.data_gross, alpha)
@@ -789,7 +793,7 @@ class Vorwaertsprojektion(QtCore.QThread):
             self.sinogramm[count] = linienintegral
             cttisch_dreh = drehung(self.cttisch, -alpha)
             self.data_gms[:] = self.data_gross + cttisch_dreh
-            self.signal.emit(alpha)
+        self.signal.emit(alpha)
         self.signal_finish.emit(alpha)
 
 

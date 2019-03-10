@@ -165,42 +165,56 @@ class Gui(QtWidgets.QWidget):
         # Tollbar erzeugen, wo einige Buttons drin
         self.tb = toolbar
         # OpenButton hinzufügen
-        self.load = QAction(QIcon('exit24.bmp'), "Open", self)
-        self.load.setToolTip('Öffnet ein Bild.')
+        self.load = QAction(QIcon('openIcon.bmp'), "Open", self)
+        self.load.setToolTip('Öffnen (Ctrl+Q). \n'
+                             'Öffnet ein vorhandenes Bild.')
+        # TODO: erste Zeile fett?
+        self.load.setShortcut('Ctrl+Q')
         self.tb.addAction(self.load)
         self.load.triggered.connect(self.loadButtonPress)
         # SaveButton Sinogramm hinzufuegen
-        self.saveSino = QAction("Save Sinogramm", self)
+        self.saveSino = QAction(QIcon('SaveSinoIcon4.bmp'), "Save Sinogramm", self)
         self.saveSino.setEnabled(False)
-        self.saveSino.setToolTip('Speichert Sinogramm unter selbst'
-                                        'gewählten Dateinamen ab.')
+        self.saveSino.setToolTip('Speichere Sinogramm (Ctrl+S). \n'
+                                 'Speichert aktuelles Sinogramm unter selbst'
+                                'gewählten Dateinamen ab.')
+        self.saveSino.setShortcut('Ctrl+S')
         self.tb.addAction(self.saveSino)
         self.saveSino.triggered.connect(self.saveButtonPress)
         # Knopf zum Laden des Sinogramms
-        self.loadSino = QAction("Load Sinogramm", self)
-        self.loadSino.setToolTip('Lädt ein abgespeichertes Sinogramm.')
+        self.loadSino = QAction(QIcon('openSinoIcon.bmp'), "Load Sinogramm", self)
+        self.loadSino.setToolTip('Lade Sinogramm (Ctrl+R). \n'
+                                 'Lädt ein selbst gewähltes '
+                                 'abgespeichertes Sinogramm.')
+        self.saveSino.setShortcut('Ctrl+R')
         self.tb.addAction(self.loadSino)
         self.loadSino.triggered.connect(self.loadsinoButtonPress)
         # ClearButton hinzufuegen
-        self.clear = QAction("Clear", self)
-        self.clear.setToolTip('Entfernt alle vorherig geladenen Bilder.')
+        self.clear = QAction(QIcon('clearIcon.bmp'), "Clear", self)
+        self.clear.setToolTip('Clear (Ctrl+C). \n'
+                              'Entfernt alle vorherig geladenen Bilder.')
+        self.clear.setShortcut('Ctrl+C')
         self.tb.addAction(self.clear)
         self.clear.triggered.connect(self.clearButtonPress)
         # AbbruchButton hinzufuegen
         # TODO: soll Berechnung abbrechen!
-        self.breaking = QAction("Close", self)
+        self.breaking = QAction(QIcon('abbruchIcon.bmp'), "Close", self)
         self.breaking.setEnabled(False)
-        self.breaking.setToolTip('Abbruch des Programms.')
+        self.breaking.setToolTip('Abbruch(Ctrl+B). \n'
+                                 'Abbruch der aktuellen Berechnung.')
+        self.breaking.setShortcut('Ctrl+B')
         self.tb.addAction(self.breaking)
         self.breaking.triggered.connect(qApp.quit)
         # SaveButton rückprojiziertes Bild hinzufuegen
-        self.save_img = QAction("Save Reko-bild", self)
+        self.save_img = QAction(QIcon('SaveImgIcon.bmp'), "Save Reko-bild", self)
         self.save_img.setEnabled(False)
-        self.save_img.setToolTip('Speichert rückprojiziertes Bild'
-                                       ' unter selbst gewählten Dateinamen'
-                                       ' ab.')
+        self.save_img.setToolTip('Speichere Bild (Ctrl+T). \n'
+                                 'Speichert aktuelles rückprojiziertes Bild'
+                                 ' unter selbst gewählten Dateinamen ab.')
+        self.save_img.setShortcut('Ctrl+T')
         self.tb.addAction(self.save_img)
         self.breaking.triggered.connect(self.save_imgButtonPress)
+        # TODO: Iconansichten verbessern
 
 
 
@@ -649,6 +663,7 @@ class Gui(QtWidgets.QWidget):
 
     def animation_r_finish(self, i):
         self.progress_img_r.setValue(self.progress_img_r.maximum())
+        # durch vorjherige Vorwärtsprojektion (dabei wurde Ursprungsbild fuer
         # durch vorherige Vorwärtsprojektion (dabei wurde Ursprungsbild fuer
         # eine verlustfreie Drehung vergroeßert) ist um rueckprojeziertes
         # Bild ein Kreis

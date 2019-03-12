@@ -4,8 +4,9 @@
     simulierten CT-Bildern, stellt Sinogramm grafisch dar. Dabei koennen
     bestimmte Parameter eingestellt werden und werden bei grafischen
     Darstellung beruecksichtigt.
+    Aufgabe 2:
 """
-# TODO: Trennung Aufgabe 1 und 2 ( Vor und Rueck)
+
 # TODO: .show()
 # TODO: uebersichtlicher durch mehr Klassen?
 
@@ -22,8 +23,6 @@ from PyQt5.QtWidgets import (QFileDialog, QPushButton, QGridLayout,
                              QGroupBox, QProgressBar, QCheckBox, QLabel,
                              QSpinBox, QComboBox, QToolTip, qApp, QMainWindow,
                              QAction, QCheckBox)
-
-#from PyQt5.QtWidgets.QMainWindow import QIcon
 
 import pyqtgraph
 
@@ -83,6 +82,7 @@ def drehung_vorverarbeitung(image):
     """
     # Annahme: quadratische Eingangs-Matrix
     # Seitenlaenge der ursprünglichen Matrix abspeichern (a)
+    # TODO: self funktioniert nicht?
     laenge_original = len(image)
     # Wie groß muss vergrößertes Bild sein für anschließende verlustfreie
     # Drehung? (mit Satz des Pythagoras berechnet)
@@ -142,6 +142,7 @@ def drehung(image, grad):
     return image_transform
 
 
+# Layouteinstellungen grafische Oberflaeche gestalten
 class MainGui(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
@@ -152,15 +153,12 @@ class MainGui(QtWidgets.QMainWindow):
         self.setCentralWidget(self.central)
 
 
+# Layouteinstellungen grafische Oberflaeche gestalten
 class Gui(QtWidgets.QWidget):
     def __init__(self, grid, toolbar):
         super().__init__()
 
         self.data = None
-        # Layouteinstellungen
-        # grafische Oberflaeche gestalten
-        # Erzeugung uebergeordnetes Grid, in dem alle grafischen Objekte 
-        # enthalten sind
         self.grid = grid
         # Tollbar erzeugen, wo einige Buttons drin
         self.tb = toolbar
@@ -214,12 +212,13 @@ class Gui(QtWidgets.QWidget):
         self.save_img.setShortcut('Ctrl+T')
         self.tb.addAction(self.save_img)
         self.breaking.triggered.connect(self.save_imgButtonPress)
-        # TODO: Iconansichten verbessern
+        # TODO: Iconansichten verbessern: Transparenz verloren?
 
 
 
         self.grid.setSpacing(10)
         self.setWindowTitle("Wir basteln uns ein CT!")
+        # TODO: nicht mehr zu sehen
 
 
 
@@ -428,10 +427,32 @@ class Gui(QtWidgets.QWidget):
 
 
     def activate_cb_filter(self):
+        """
+        Zusammenspiel activate- inactivate Auswahl an Filtern.
+
+        Parameters
+        ----------
+        None
+
+        Return
+        ----------
+        None
+        """
         self.cb_filter.setEnabled(True)
 
 
     def deactivate_cb_filter(self):
+        """
+        Zusammenspiel activate- inactivate Auswahl an Filtern.
+
+        Parameters
+        ----------
+        None
+
+        Return
+        ----------
+        None
+        """
         self.cb_filter.setEnabled(False)
 
 
@@ -461,8 +482,6 @@ class Gui(QtWidgets.QWidget):
         self.groupBox_rueck.setEnabled(False)
 
 
-
-    # TODO: erklären lassen... animieren (in Thread packen)
     # TODO: anderen Filter benutzen
     def rueckButtonPress(self):
         """
@@ -478,15 +497,18 @@ class Gui(QtWidgets.QWidget):
         None
         """
         self.groupBox_rueck.setEnabled(False)
+        # TOOD: nach Berechnung soll vor wieder enabled werden, während grau
+        self.groupBox_vor.setEnabled(False)
         self.img3.clear()
         # Anwendung Filter vor Rueckprojektion
         self.sinogramm_filter = np.copy(self.sinogramm)
-        # Auswahl Filterung auf grafischen Oberfläche
-
+        # Auswahl Filter auf grafischen Oberfläche
         filterart = self.radio_mit.isChecked()
+        # gefiltert
         if filterart:
             # abspeichern des aktuell ausgewaehlten Filters
             self.currentchoice = self.cb_filter.currentText()
+            # Auswahl Rampfilter
             if self.currentchoice == "Ramp":
                 # Erstellung Rampfilter
                 ramp = np.abs(np.fft.fftshift(np.fft.fftfreq(len(self.sinogramm[0]))))
@@ -494,38 +516,29 @@ class Gui(QtWidgets.QWidget):
                 fourier_image = np.fft.fft(self.sinogramm)
                 fourier_image = np.fft.fftshift(fourier_image)
                 # Anwenden des Filters auf Bild:
-                # Multiplikation im Frequenzraum
+                # (Multiplikation im Frequenzraum)
                 fourier_gefiltert = fourier_image * ramp
-                # Bild zurueckshiften
                 fourier_gefiltert = np.fft.ifftshift(fourier_gefiltert)
-                # Ruecktransformation Frequenz- in Ortsraum
                 self.sinogramm_filter = np.real(np.fft.ifft(fourier_gefiltert))
         alpha_r = np.linspace(0, self.winkel_max, len(self.sinogramm_filter), endpoint=False)
         self.image_r = np.zeros((len(self.sinogramm_filter[0]), len(self.sinogramm_filter[0])))
         # hier Thread da rechenaufwendig
         self.calculate_rueck = Rueckwaertsprojektion(self.sinogramm_filter, self.image_r, alpha_r)
-
+        # Auswahl ob mit oder ohne Animation auf grafischen Oberfläche
         animation_rueck = self.ani_r.isChecked()
+        # mit Animation
         if animation_rueck:
-            print("if")
             self.calculate_rueck.signal.connect(self.progress_rueck)
             self.calculate_rueck.signal.connect(self.animation_r)
-            # print("if")
             self.calculate_rueck.signal_finish.connect(self.animation_r_finish)
-            # print("if")
+        # ohne Animation
         else:
-            print("else")
             self.calculate_rueck.signal.connect(self.progress_rueck)
-            # self.progress_sino.setValue(alpha)
-            # self.img2.setImage(self.sinogramm)
             self.calculate_rueck.signal_finish.connect(self.animation_r_finish)
-
+        # Progressbar zeigt Fortschritt während Berechnung
         self.progress_img_r.setMaximum(self.winkel_max)
         self.calculate_rueck.start()
         self.progress_sino.reset()
-        self.groupBox_vor.setEnabled(False)
-
-
 
 
     def loadButtonPress(self):
@@ -546,12 +559,11 @@ class Gui(QtWidgets.QWidget):
                                                   "Open file", ""
                                                   ,"CT Bilder (*.npy)",
                                                   options=options)
-        # TODO: was passiert wenn es kein File gibt? bzw man etwas
-        # unzureichendes laedt? Kernel died!
 
         if fileName:
             # nachdem neue Datei geladen wird sollen vorherige Grafiken
-            # aus allen Bildern entfernt werden
+            # aus allen Bildern entfernt werden, Löschen vorherig gespeicherter
+            # Daten
             self.clearButtonPress()
             # Einlesen der Daten
             self.data = np.load(fileName)
@@ -560,7 +572,6 @@ class Gui(QtWidgets.QWidget):
                 
                 
     def sinoButtonPress(self):
-        self.groupBox_vor.setEnabled(False)
         """
         Erstellt Sinogramm und stellt es grafisch dar.
         
@@ -572,10 +583,11 @@ class Gui(QtWidgets.QWidget):
         ----------
         None
         """
+        self.groupBox_vor.setEnabled(False)
+        # TODO: doppelt gemoppelt?
         self.laenge_original = len(self.data)
         # Vorverarbeitung fuer Drehung
         self.data_gross = drehung_vorverarbeitung(self.data)
-        linienintegrale = []
         # verschiedene (Rotations)winkel durchgehen
         # Auswahl Endpunkt je nachdem, was auf der graphischen Oberflaeche
         # ausgewaehlt wird
@@ -585,83 +597,143 @@ class Gui(QtWidgets.QWidget):
             angle_value = 180
         else:
             angle_value = 360
-        # TODO: ??
         self.winkel_max = angle_value
         angle_steps = self.sb_anglesteps.value()
         self.sinogramm = np.zeros([angle_steps, len(self.data_gross)])
         # Animation CT Tisch
-        print('ani ct')
         self.data_gms = np.zeros_like(self.data_gross)
         self.cttisch = np.zeros_like(self.data)
         self.cttisch[-3:-1] = np.max(self.data)
         self.cttisch = drehung_vorverarbeitung(self.cttisch)
-        print("vordreh ct")
-        # hier Thread!!!
+        # hier Thread wegen rechenaufwändigem Teil
         self.calculate_vor = Vorwaertsprojektion(self.data_gms, angle_value, self.cttisch, self.data_gross, angle_steps, self.sinogramm)
-        print('vorwartsproj')
+        # auf grafischen Oberfläche Auswahl, ob Darstellung mit Animation
+        # oder nicht
         animation_vor = self.ani_v.isChecked()
+        # mit Animation
         if animation_vor:
-            print("if")
             self.calculate_vor.signal.connect(self.progress_vor)
             self.calculate_vor.signal.connect(self.animation)
-            #print("if")
             self.calculate_vor.signal_finish.connect(self.animation_finish)
             self.calculate_vor.signal.connect(self.animation_cttisch)
-            #print("if")
         else:
-            print("else")
+            # ohne Animation
             self.calculate_vor.signal.connect(self.progress_vor)
-            #self.progress_sino.setValue(alpha)
-            #self.img2.setImage(self.sinogramm)
             self.calculate_vor.signal_finish.connect(self.animation_finish)
+        # Progressbar zeigt Fortschritt während Berechnung
         self.progress_sino.setMaximum(angle_value)
-
-        print("start")
         self.calculate_vor.start()
-
-        print("b")
-        # TODO: clear nach einer Vorwärtsprojektion
-
-
+        # TODO: clear nach einer Vorwärtsprojektion (außer img1.clear)
 
 
     def animation_cttisch(self, alpha):
+        """
+        Animiert CT-Tisch während Vorwärtsprojektion
+
+        Parameters
+        ----------
+        None
+
+        Return
+        ----------
+        None
+        """
         self.img1.setImage(self.data_gms)
+        # TODO: np.roal()
 
-
-        # TODO:threading, schneller machen, Drehung interpolieren? 
-        # TODO: live Erzeugung Sinogramm
-        
 
     def animation(self, alpha):
-        print("aa")
-        #self.progress_sino.setValue(alpha)
+        """
+        Animiert Erstellung Sinogramm während Vorwärtsprojektion.
+
+        Parameters
+        ----------
+        None
+
+        Return
+        ----------
+        None
+        """
         self.img2.setImage(self.sinogramm)
-        print("aa")
 
 
     def progress_vor(self, alpha):
+        """
+        Stellt Fortschritt in der Vorwärtsprojektion als Progressbar dar
+
+        Parameters
+        ----------
+        None
+
+        Return
+        ----------
+        None
+        """
         self.progress_sino.setValue(alpha)
 
 
+    # TODO: Umbenennung
     def animation_finish(self, alpha):
-        print("bb")
+        """
+          nach Fertigstellen der Vorwärtsprojektionsberechnung.
+
+          Parameters
+          ----------
+          None
+
+          Return
+          ----------
+          None
+          """
         self.progress_sino.setValue(self.progress_sino.maximum())
         self.img2.setImage(self.sinogramm)
         self.saveSino.setEnabled(True)
         self.groupBox_rueck.setEnabled(True)
         self.groupBox_vor.setEnabled(True)
-        print("bb")
+
 
     def progress_rueck(self, i):
+        """
+        Stellt Fortschritt in der Rückwärtsprojektion als Progressbar dar
+
+        Parameters
+        ----------
+        None
+
+        Return
+        ----------
+        None
+        """
         self.progress_img_r.setValue(i)
 
-    def animation_r(self, i):
 
+    def animation_r(self, i):
+        """
+        Animiert Rückprojektion.
+
+        Parameters
+        ----------
+        None
+
+        Return
+        ----------
+        None
+        """
         self.img3.setImage(self.image_r)
 
 
     def animation_r_finish(self, i):
+        """
+          nach Fertigstellen der Rückwärtssprojektionsberechnung.
+
+          Parameters
+          ----------
+          None
+
+          Return
+          ----------
+          None
+          """
         self.progress_img_r.setValue(self.progress_img_r.maximum())
         # durch vorjherige Vorwärtsprojektion (dabei wurde Ursprungsbild fuer
         # durch vorherige Vorwärtsprojektion (dabei wurde Ursprungsbild fuer
@@ -674,7 +746,6 @@ class Gui(QtWidgets.QWidget):
         self.image_r = self.image_r[diff:self.laenge_original+diff, diff:self.laenge_original+diff]
         # Rückprojektion darstellen auf grafischer Oberflaeche
         self.img3.setImage(self.image_r)
-        #print(np.shape(self.image_r))
         # TODO: noch nicht fertig
         # Differenzbild ezeugen und grafisch darstellen
         if self.data is not None:
@@ -683,7 +754,8 @@ class Gui(QtWidgets.QWidget):
         self.save_img.setEnabled(True)
         self.groupBox_rueck.setEnabled(True)
 
-    # TODO: erklaeren lassen! Umbenennung Button
+
+    # TODO: erklaeren lassen!
     def saveButtonPress(self):
         """
         In einem sich oeffnenden file dialog kann ein Sinogramm
@@ -701,7 +773,6 @@ class Gui(QtWidgets.QWidget):
                                                        len(self.sinogramm[0]))),
                                                         self.sinogramm))
         self.sinogramm_plus_info[0, 0] = self.laenge_original
-        # TODO: abspeichern ob 180 )oder 360 °)
         # je nachdem was auf grafischen Oberfläche ausgewaehlt wurde,
         # 180 Grad oder 360 Grad abspeichern
         angle = self.radio180.isChecked()
@@ -713,9 +784,8 @@ class Gui(QtWidgets.QWidget):
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
         fileName, _ = QFileDialog.getSaveFileName(self,"Save file", "Sinogramm.milu", "Sinogramme (*.milu)", options=options)
-        # TODO: was passiert wenn es kein File gibt? bzw man etwas
-        # unzureichendes laedt? Kernel died!
         if fileName:
+            # TODO: versteh ich nicht...
             # Speichern der Daten
             with open(fileName, "wb") as file:
                 np.save(file, self.sinogramm_plus_info)
@@ -762,8 +832,6 @@ class Gui(QtWidgets.QWidget):
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
         fileName, _ = QFileDialog.getOpenFileName(self,"Open Sino", "", "Sinogramme (*.milu)", options=options)
-        # TODO: Bei Cancel stürzt Programm ab??
-        # TODO: was passiert wenn es kein File gibt?
         if fileName:
             self.clearButtonPress()
             # Einlesen der Daten
@@ -775,16 +843,8 @@ class Gui(QtWidgets.QWidget):
             self.sinogramm = self.sinogramm_plus_info[1:]
             self.img2.setImage(self.sinogramm)
             self.groupBox_rueck.setEnabled(True)
-
-
-
-        
     # TODO: zu viele weiße Punkte bei Sinogramm?
-    # TODO: Kontrast verändern
-    
 
-        
-                
 
 def main():
     app = QtWidgets.QApplication(sys.argv)
@@ -796,7 +856,7 @@ def main():
 
 
 class Vorwaertsprojektion(QtCore.QThread):
-    # fuer Animation
+    # Signale, welche wäährend Projektion erstellt werden
     signal = QtCore.pyqtSignal(float)
     signal_finish = QtCore.pyqtSignal(float)
 
@@ -811,40 +871,34 @@ class Vorwaertsprojektion(QtCore.QThread):
         self.cttisch = cttisch
 
 
-
     def run(self):
         # Anzahl an Winkelschritten
-        print("run")
-
         numbers_angle = np.linspace(0, self.angle_value, self.angle_steps, endpoint=False)
         for count, alpha in enumerate(numbers_angle):
-            #print(count)
-            # TODO: Progressbar raus aus Thread!
             # Drehung
             data_transform = drehung(self.data_gross, alpha)
             # Bildung von Linienintegralen fuer einzelnen Rotationswinkel
             linienintegral = np.sum(data_transform, axis=0)
             self.sinogramm[count] = linienintegral
+            # TODO: Drehung CT Tisch nur, wenn auch Animation ausgewählt ist
             cttisch_dreh = drehung(self.cttisch, -alpha)
             self.data_gms[:] = self.data_gross + cttisch_dreh
             self.signal.emit(alpha)
         self.signal_finish.emit(alpha)
 
 
-
-
 class Rueckwaertsprojektion(QtCore.QThread):
-    # fuer Animation
+    # Signale, welche wäährend Projektion erstellt werden
     signal = QtCore.pyqtSignal(float)
     signal_finish = QtCore.pyqtSignal(float)
 
 
     def __init__(self, sinogramm_filter, image_r, alpha_r):
         super().__init__()
-        #print("init")
         self.sinogramm_filter = sinogramm_filter
         self.image_r = image_r
         self.alpha_r = alpha_r
+
 
     def run(self):
         for i in range(len(self.sinogramm_filter)):
@@ -859,28 +913,14 @@ class Rueckwaertsprojektion(QtCore.QThread):
 if __name__ == "__main__":
     main()
     
-    
-# Buttons: Parameter Anzahl Winkelschritte, pi oder 2pi (Radiobutton, Checkbox)
-# TODO: Winkelanzahl: wieviele Winkeschritte
-    # moved...slider
-    # welcher winkelraum (180 oder 360°) checkbox
-    # TODO: ProgressBar
+
     # TODO: funktioniert nicht mit Windowskonsole?
-    # TODO: falsche
     # TODO: alle Buttons richtig verknüpfen, richtig setzen
-    # TODO: MenuToolBar oben, grafische Oberfläche überarbeiten
-    # auswahl filter nur wenn gefiltert angeklickt ist
-    # threading, Animation
-    
-    # TODO: spacer, progressbar, Progressbar bei Auswahl 180 360
-    # TODO: ok Buttons fuer Boxen?
-    # rückprojizierte Bilder abspeichern, damit erneut Projektion mgl
-    # Progress, Animation Rueck, andere Filter, Speichern rueck Bilder
-    # ausgrauen, rescalen?
-    # TODO: bei richtigem CT funktioniert Rueckreko nicht
-    # TODO: CT Tisch ebenfalls animieren
-    # TODO: File dialog Ordner (idea) welches Abgabeformat?r
-    # TODO: movie ausschaltbar
-    # TODO: Abbruchbutton zum Beenden der Rechnung (alles andere
-    # TODO: dann ausgeschaltet)
+    # TODO: grafische Oberfläche: Spacer
+    # TODO: rückprojizierte Bilder abspeichern, damit erneut Projektion mgl
+    # TODO: andere Filter
+    # TODO: normieren
+    # TODO: in File dialog Ordner (idea), welches Abgabeformat?
+    # TODO: Abbruchbutton zum Beenden der Rechnung (clearen?)
+    # TODO: funktioniert es auch im Se3?
 

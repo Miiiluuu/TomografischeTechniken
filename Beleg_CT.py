@@ -197,12 +197,11 @@ class Gui(QtWidgets.QWidget):
         # AbbruchButton hinzufuegen
         # TODO: soll Berechnung abbrechen!
         self.breaking = QAction(QIcon('abbruchIcon.bmp'), "Close", self)
-        self.breaking.setEnabled(False)
         self.breaking.setToolTip('Abbruch(Ctrl+B). \n'
                                  'Abbruch der aktuellen Berechnung.')
         self.breaking.setShortcut('Ctrl+B')
         self.tb.addAction(self.breaking)
-        self.breaking.triggered.connect(qApp.quit)
+        self.breaking.triggered.connect(self.breakingButtonPress)
         # SaveButton rückprojiziertes Bild hinzufuegen
         self.save_img = QAction(QIcon('SaveImgIcon.bmp'), "Save Reko-bild", self)
         self.save_img.setEnabled(False)
@@ -211,7 +210,7 @@ class Gui(QtWidgets.QWidget):
                                  ' unter selbst gewählten Dateinamen ab.')
         self.save_img.setShortcut('Ctrl+T')
         self.tb.addAction(self.save_img)
-        self.breaking.triggered.connect(self.save_imgButtonPress)
+        self.save_img.triggered.connect(self.save_imgButtonPress)
         # TODO: Iconansichten verbessern: Transparenz verloren?
 
 
@@ -477,9 +476,24 @@ class Gui(QtWidgets.QWidget):
         self.saveSino.setEnabled(False)
         self.progress_sino.reset()
         self.progress_img_r.reset()
-        self.breaking.setEnabled(False)
         self.groupBox_vor.setEnabled(False)
         self.groupBox_rueck.setEnabled(False)
+
+
+    def breakingButtonPress(self):
+        """
+        Abbruch der aktuellen Berechnung
+
+        Parameters
+        ----------
+        None
+
+        Return
+        ----------
+        None
+        """
+
+
 
 
     # TODO: anderen Filter benutzen

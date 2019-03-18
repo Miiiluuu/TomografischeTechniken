@@ -255,10 +255,8 @@ class Gui(QtWidgets.QWidget):
         # in VBox kommen alle Buttons, Auswahlmöglichkeiten für Parameter uÄ
         self.vbox_button_vor = QVBoxLayout()
         self.grid.addLayout(self.vbox_button_vor, 0, 0)
-        self.vbox_button_vor.addStretch(1)
         self.vbox_button_rueck = QVBoxLayout()
         self.grid.addLayout(self.vbox_button_rueck, 1, 0)
-        self.vbox_button_rueck.addStretch(1)
 
 
         # Auswahlmoeglichkeiten fuer Vorwärtsprojektion
@@ -269,8 +267,11 @@ class Gui(QtWidgets.QWidget):
         self.groupBox_vor = QGroupBox("Vorwärtsprojektion")
         self.vbox_v = QVBoxLayout()
         self.vbox_v.addLayout(self.hbox_v)
+        self.vbox_v.setAlignment(QtCore.Qt.AlignCenter)
         self.groupBox_vor.setLayout(self.vbox_v)
         self.vbox_button_vor.addWidget(self.groupBox_vor)
+        # verticalSpacer_vor = QtWidgets.QSpacerItem(20, 100, QtWidgets.QSizePolicy.Expanding)
+        # self.vbox_button_vor.addSpacerItem(verticalSpacer_vor)
         # erstellt RadioButton, zur Auswahl, ob Sinogramm im Vollkreis (360°)
         # oder Halbkreis (180°) berechnet werden soll
         self.groupBox_angle = QGroupBox("Projektion im Winkelraum:")
@@ -280,7 +281,6 @@ class Gui(QtWidgets.QWidget):
         self.vbox_angle = QVBoxLayout()
         self.vbox_angle.addWidget(self.radio180)
         self.vbox_angle.addWidget(self.radio360)
-        self.vbox_angle.addStretch(1)
         self.groupBox_angle.setLayout(self.vbox_angle)
         self.hbox_v.addWidget(self.groupBox_angle)
         # erstellt SpinBox zur Auswahl der Anzahl an Winkelschritten,
@@ -318,6 +318,7 @@ class Gui(QtWidgets.QWidget):
         self.vbox_v.addWidget(self.sinoButton, 0, QtCore.Qt.AlignCenter)
         self.groupBox_vor.setEnabled(False)
 
+
         # Auswahlmoeglichkeiten fuer Rückwärtsprojektion
         # ist Uebersicht zur Auswahl Parameter fuer Rückwaertsprojektion
         # es wird HBox erzeugt
@@ -326,6 +327,7 @@ class Gui(QtWidgets.QWidget):
         self.groupBox_rueck = QGroupBox("Rückwärtsprojektion")
         self.vbox_r = QVBoxLayout()
         self.vbox_r.addLayout(self.hbox_r)
+        self.vbox_r.setAlignment(QtCore.Qt.AlignCenter)
         self.groupBox_rueck.setLayout(self.vbox_r)
         self.vbox_button_rueck.addWidget(self.groupBox_rueck)
         # erstellt RadioButton, zur Auswahl, ob gefilterte oder ungefilterte
@@ -337,7 +339,6 @@ class Gui(QtWidgets.QWidget):
         self.vbox_projection = QVBoxLayout()
         self.vbox_projection.addWidget(self.radio_mit)
         self.vbox_projection.addWidget(self.radio_ohne)
-        self.vbox_projection.addStretch(1)
         self.groupBox_projection.setLayout(self.vbox_projection)
         self.hbox_r.addWidget(self.groupBox_projection)
         # erstellt ComboBox zur Auswahl der Filter für gefilterte 
@@ -667,6 +668,7 @@ class Gui(QtWidgets.QWidget):
         self.cttisch = np.zeros_like(self.data)
         self.cttisch[-3:-1] = np.max(self.data)
         self.cttisch = drehung_vorverarbeitung(self.cttisch)
+        self.cttisch = np.roll(self.cttisch, len(self.data)//10, axis=0)
         # auf grafischen Oberfläche Auswahl, ob Darstellung mit Animation
         # oder nicht
         animation_vor = self.ani_v.isChecked()

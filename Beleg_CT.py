@@ -27,6 +27,30 @@ from PyQt5.QtWidgets import (QFileDialog, QPushButton, QGridLayout,
 import pyqtgraph
 
 
+def rescale(original, img_rueck):
+    """
+    Abbruch der aktuellen Berechnung
+
+    Parameters
+    ----------
+    None
+
+    Return
+    ----------
+    None
+    """
+    # Wertebereich fuer Originalbild
+    min_original = np.min(original)
+    max_original = np.max(original)
+    # Wertebereich des rueckprojiziertes Bildes
+    min_rueck = np.min(img_rueck)
+    max_rueck = np.max(img_rueck)
+    diff = min_rueck - min_original
+    img_rueck -= diff
+    scal = max_original / max_rueck
+    img_rueck *= scal
+    return img_rueck
+
 def drehmatrix(grad):
     """ Erzeugt eine Drehmatrix.
 
@@ -82,7 +106,6 @@ def drehung_vorverarbeitung(image):
     """
     # Annahme: quadratische Eingangs-Matrix
     # Seitenlaenge der ursprünglichen Matrix abspeichern (a)
-    # TODO: self funktioniert nicht?
     laenge_original = len(image)
     # Wie groß muss vergrößertes Bild sein für anschließende verlustfreie
     # Drehung? (mit Satz des Pythagoras berechnet)
@@ -157,7 +180,8 @@ class MainGui(QtWidgets.QMainWindow):
 class Gui(QtWidgets.QWidget):
     def __init__(self, grid, toolbar):
         super().__init__()
-
+        self.calculate_vor = None
+        self.calculate_rueck = None
         self.data = None
         self.grid = grid
         # Tollbar erzeugen, wo einige Buttons drin
@@ -200,6 +224,7 @@ class Gui(QtWidgets.QWidget):
         self.breaking.setToolTip('Abbruch(Ctrl+B). \n'
                                  'Abbruch der aktuellen Berechnung.')
         self.breaking.setShortcut('Ctrl+B')
+        self.breaking.setEnabled(False)
         self.tb.addAction(self.breaking)
         self.breaking.triggered.connect(self.breakingButtonPress)
         # SaveButton rückprojiziertes Bild hinzufuegen
@@ -213,6 +238,9 @@ class Gui(QtWidgets.QWidget):
         self.save_img.triggered.connect(self.save_imgButtonPress)
         # TODO: Iconansichten verbessern: Transparenz verloren?
 
+
+        self.alle_buttons = [self.load, self.save_img, self.saveSino,
+                             self.clear, self.loadSino]
 
 
         self.grid.setSpacing(10)
@@ -317,8 +345,7 @@ class Gui(QtWidgets.QWidget):
         self.groupBox_cb = QGroupBox("Filter fuer Rückprojektion:")
         self.cb_filter = QComboBox()
         self.cb_filter.addItem("Ramp")
-        self.cb_filter.addItem("Shepp-Logan")
-        self.cb_filter.addItems(["Middle"])
+        self.cb_filter.addItem("Hamming")
         self.vbox_cb = QVBoxLayout()
         self.vbox_cb.addWidget(self.cb_filter)
         self.groupBox_cb.setLayout(self.vbox_cb)
@@ -425,21 +452,6 @@ class Gui(QtWidgets.QWidget):
         #self.img4.setImage(np.eye(5))
 
 
-    def activate_cb_filter(self):
-        """
-        Zusammenspiel activate- inactivate Auswahl an Filtern.
-
-        Parameters
-        ----------
-        None
-
-        Return
-        ----------
-        None
-        """
-        self.cb_filter.setEnabled(True)
-
-
     def deactivate_cb_filter(self):
         """
         Zusammenspiel activate- inactivate Auswahl an Filtern.
@@ -453,6 +465,21 @@ class Gui(QtWidgets.QWidget):
         None
         """
         self.cb_filter.setEnabled(False)
+
+
+    def activate_cb_filter(self):
+        """
+        Zusammenspiel activate- inactivate Auswahl an Filtern.
+
+        Parameters
+        ----------
+        None
+
+        Return
+        ----------
+        None
+        """
+        self.cb_filter.setEnabled(True)
 
 
     def clearButtonPress(self):
@@ -492,9 +519,10 @@ class Gui(QtWidgets.QWidget):
         ----------
         None
         """
-
-
-
+        if self.calculate_vor is not None:
+            self.calculate_vor.breaking = True
+        if self.calculate_rueck is not None:
+            self.calculate_rueck.breaking = True
 
     # TODO: anderen Filter benutzen
     def rueckButtonPress(self):
@@ -510,10 +538,14 @@ class Gui(QtWidgets.QWidget):
         ----------
         None
         """
+        for i in self.alle_buttons:
+            i.setEnabled(False)
+        self.breaking.setEnabled(True)
         self.groupBox_rueck.setEnabled(False)
         # TOOD: nach Berechnung soll vor wieder enabled werden, während grau
         self.groupBox_vor.setEnabled(False)
         self.img3.clear()
+        self.img4.clear()
         # Anwendung Filter vor Rueckprojektion
         self.sinogramm_filter = np.copy(self.sinogramm)
         # Auswahl Filter auf grafischen Oberfläche
@@ -522,18 +554,24 @@ class Gui(QtWidgets.QWidget):
         if filterart:
             # abspeichern des aktuell ausgewaehlten Filters
             self.currentchoice = self.cb_filter.currentText()
+            # Erstellung Rampfilter
+            ramp = np.abs(np.fft.fftshift(np.fft.fftfreq(len(self.sinogramm[0]))))
             # Auswahl Rampfilter
             if self.currentchoice == "Ramp":
-                # Erstellung Rampfilter
-                ramp = np.abs(np.fft.fftshift(np.fft.fftfreq(len(self.sinogramm[0]))))
-                # Fouriertransformation
-                fourier_image = np.fft.fft(self.sinogramm)
-                fourier_image = np.fft.fftshift(fourier_image)
-                # Anwenden des Filters auf Bild:
-                # (Multiplikation im Frequenzraum)
-                fourier_gefiltert = fourier_image * ramp
-                fourier_gefiltert = np.fft.ifftshift(fourier_gefiltert)
-                self.sinogramm_filter = np.real(np.fft.ifft(fourier_gefiltert))
+                filterkern = ramp
+            # Hamming-Filter
+            else:
+                n = np.arange(len(self.sinogramm[0]))
+                fenster = 0.54 - 0.46 * np.cos(2*np.pi*(n/len(self.sinogramm[0])-1))
+                filterkern = ramp * fenster
+            # Fouriertransformation
+            fourier_image = np.fft.fft(self.sinogramm)
+            fourier_image = np.fft.fftshift(fourier_image)
+            # Anwenden des Filters auf Bild:
+            # (Multiplikation im Frequenzraum)
+            fourier_gefiltert = fourier_image * filterkern
+            fourier_gefiltert = np.fft.ifftshift(fourier_gefiltert)
+            self.sinogramm_filter = np.real(np.fft.ifft(fourier_gefiltert))
         alpha_r = np.linspace(0, self.winkel_max, len(self.sinogramm_filter), endpoint=False)
         self.image_r = np.zeros((len(self.sinogramm_filter[0]), len(self.sinogramm_filter[0])))
         # hier Thread da rechenaufwendig
@@ -597,8 +635,18 @@ class Gui(QtWidgets.QWidget):
         ----------
         None
         """
+        # Ausgangszustand herstellen
+        self.img2.clear()
+        self.img3.clear()
+        self.img4.clear()
+        self.progress_img_r.reset()
+        self.progress_sino.reset()
+        self.groupBox_rueck.setEnabled(False)
+        self.img1.setImage(self.data)
         self.groupBox_vor.setEnabled(False)
-        # TODO: doppelt gemoppelt?
+        for i in self.alle_buttons:
+            i.setEnabled(False)
+        self.breaking.setEnabled(True)
         self.laenge_original = len(self.data)
         # Vorverarbeitung fuer Drehung
         self.data_gross = drehung_vorverarbeitung(self.data)
@@ -619,11 +667,11 @@ class Gui(QtWidgets.QWidget):
         self.cttisch = np.zeros_like(self.data)
         self.cttisch[-3:-1] = np.max(self.data)
         self.cttisch = drehung_vorverarbeitung(self.cttisch)
-        # hier Thread wegen rechenaufwändigem Teil
-        self.calculate_vor = Vorwaertsprojektion(self.data_gms, angle_value, self.cttisch, self.data_gross, angle_steps, self.sinogramm)
         # auf grafischen Oberfläche Auswahl, ob Darstellung mit Animation
         # oder nicht
         animation_vor = self.ani_v.isChecked()
+        # hier Thread wegen rechenaufwändigem Teil
+        self.calculate_vor = Vorwaertsprojektion(self.data_gms, angle_value, self.cttisch, self.data_gross, angle_steps, self.sinogramm, animation_vor)
         # mit Animation
         if animation_vor:
             self.calculate_vor.signal.connect(self.progress_vor)
@@ -687,7 +735,7 @@ class Gui(QtWidgets.QWidget):
 
 
     # TODO: Umbenennung
-    def animation_finish(self, alpha):
+    def animation_finish(self, abgebrochen):
         """
           nach Fertigstellen der Vorwärtsprojektionsberechnung.
 
@@ -699,11 +747,25 @@ class Gui(QtWidgets.QWidget):
           ----------
           None
           """
-        self.progress_sino.setValue(self.progress_sino.maximum())
-        self.img2.setImage(self.sinogramm)
+        if abgebrochen:
+            self.groupBox_vor.setEnabled(True)
+            self.groupBox_rueck.setEnabled(False)
+            self.saveSino.setEnabled(False)
+            self.progress_sino.reset()
+            self.img2.clear()
+            self.img1.setImage(self.data)
+        else:
+            self.progress_sino.setValue(self.progress_sino.maximum())
+            self.img2.setImage(self.sinogramm)
+            self.saveSino.setEnabled(True)
+            self.groupBox_rueck.setEnabled(True)
+            self.groupBox_vor.setEnabled(True)
+            self.saveSino.setEnabled(True)
+        self.breaking.setEnabled(False)
+        self.load.setEnabled(True)
+        self.loadSino.setEnabled(True)
+        self.clear.setEnabled(True)
         self.saveSino.setEnabled(True)
-        self.groupBox_rueck.setEnabled(True)
-        self.groupBox_vor.setEnabled(True)
 
 
     def progress_rueck(self, i):
@@ -736,7 +798,7 @@ class Gui(QtWidgets.QWidget):
         self.img3.setImage(self.image_r)
 
 
-    def animation_r_finish(self, i):
+    def animation_r_finish(self, abgebrochen):
         """
           nach Fertigstellen der Rückwärtssprojektionsberechnung.
 
@@ -748,25 +810,42 @@ class Gui(QtWidgets.QWidget):
           ----------
           None
           """
-        self.progress_img_r.setValue(self.progress_img_r.maximum())
-        # durch vorjherige Vorwärtsprojektion (dabei wurde Ursprungsbild fuer
-        # durch vorherige Vorwärtsprojektion (dabei wurde Ursprungsbild fuer
-        # eine verlustfreie Drehung vergroeßert) ist um rueckprojeziertes
-        # Bild ein Kreis
-        # dieser wird nun entfernt
-        diff = (len(self.image_r) - self.laenge_original) // 2
-        print(diff)
-        print(self.laenge_original)
-        self.image_r = self.image_r[diff:self.laenge_original+diff, diff:self.laenge_original+diff]
-        # Rückprojektion darstellen auf grafischer Oberflaeche
-        self.img3.setImage(self.image_r)
-        # TODO: noch nicht fertig
-        # Differenzbild ezeugen und grafisch darstellen
-        if self.data is not None:
-            self.diff_img = np.abs(self.data - self.image_r)
-            self.img4.setImage(self.diff_img)
-        self.save_img.setEnabled(True)
-        self.groupBox_rueck.setEnabled(True)
+        if abgebrochen:
+            self.progress_img_r.reset()
+            self.img3.clear()
+            self.img4.clear()
+            self.save_img.setEnabled(False)
+            self.groupBox_rueck.setEnabled(True)
+            if self.data is not None:
+                self.groupBox_vor.setEnabled(True)
+        else:
+            self.progress_img_r.setValue(self.progress_img_r.maximum())
+            # durch vorjherige Vorwärtsprojektion (dabei wurde Ursprungsbild fuer
+            # durch vorherige Vorwärtsprojektion (dabei wurde Ursprungsbild fuer
+            # eine verlustfreie Drehung vergroeßert) ist um rueckprojeziertes
+            # Bild ein Kreis
+            # dieser wird nun entfernt
+            diff = (len(self.image_r) - self.laenge_original) // 2
+            print(diff)
+            print(self.laenge_original)
+            self.image_r = self.image_r[diff:self.laenge_original+diff, diff:self.laenge_original+diff]
+            # Rückprojektion darstellen auf grafischer Oberflaeche
+            self.img3.setImage(self.image_r)
+            # TODO: noch nicht fertig
+            # Differenzbild ezeugen und grafisch darstellen
+            if self.data is not None:
+                # Skalieren
+                self.image_r_scal = rescale(self.data, np.copy(self.image_r))
+                self.groupBox_vor.setEnabled(True)
+                self.diff_img = np.abs(self.data - self.image_r_scal)
+                self.img4.setImage(self.diff_img, levels=(np.min(self.data), np.max(self.data)))
+            self.save_img.setEnabled(True)
+            self.groupBox_rueck.setEnabled(True)
+        self.breaking.setEnabled(False)
+        self.load.setEnabled(True)
+        self.loadSino.setEnabled(True)
+        self.clear.setEnabled(True)
+
 
 
     # TODO: erklaeren lassen!
@@ -820,7 +899,7 @@ class Gui(QtWidgets.QWidget):
         """
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
-        fileName, _ = QFileDialog.getSaveFileName(self, "Save file", "Reko_img.milu",
+        fileName, _ = QFileDialog.getSaveFileName(self, "Save file", "Reko_img.npy",
                                                   "rückprojizierte Bilder (*.npy)",
                                                   options=options)
         if fileName:
@@ -872,9 +951,9 @@ def main():
 class Vorwaertsprojektion(QtCore.QThread):
     # Signale, welche wäährend Projektion erstellt werden
     signal = QtCore.pyqtSignal(float)
-    signal_finish = QtCore.pyqtSignal(float)
+    signal_finish = QtCore.pyqtSignal(bool)
 
-    def __init__(self, data_gms, angle_value, cttisch, data_gross, angle_steps, sinogramm):
+    def __init__(self, data_gms, angle_value, cttisch, data_gross, angle_steps, sinogramm, animation):
         super().__init__()
         print("init")
         self.data_gms = data_gms
@@ -883,6 +962,10 @@ class Vorwaertsprojektion(QtCore.QThread):
         self.angle_steps = angle_steps
         self.sinogramm = sinogramm
         self.cttisch = cttisch
+        self.animation = animation
+
+        # Abbruch
+        self.breaking = False
 
 
     def run(self):
@@ -895,10 +978,14 @@ class Vorwaertsprojektion(QtCore.QThread):
             linienintegral = np.sum(data_transform, axis=0)
             self.sinogramm[count] = linienintegral
             # TODO: Drehung CT Tisch nur, wenn auch Animation ausgewählt ist
-            cttisch_dreh = drehung(self.cttisch, -alpha)
-            self.data_gms[:] = self.data_gross + cttisch_dreh
+            if self.animation:
+                cttisch_dreh = drehung(self.cttisch, -alpha)
+                self.data_gms[:] = self.data_gross + cttisch_dreh
             self.signal.emit(alpha)
-        self.signal_finish.emit(alpha)
+            if self.breaking:
+                self.signal_finish.emit(True)
+                return
+        self.signal_finish.emit(False)
 
 
 class Rueckwaertsprojektion(QtCore.QThread):
@@ -906,13 +993,14 @@ class Rueckwaertsprojektion(QtCore.QThread):
     signal = QtCore.pyqtSignal(float)
     signal_finish = QtCore.pyqtSignal(float)
 
-
     def __init__(self, sinogramm_filter, image_r, alpha_r):
         super().__init__()
         self.sinogramm_filter = sinogramm_filter
         self.image_r = image_r
         self.alpha_r = alpha_r
 
+        # Abbruch
+        self.breaking = False
 
     def run(self):
         for i in range(len(self.sinogramm_filter)):
@@ -921,7 +1009,10 @@ class Rueckwaertsprojektion(QtCore.QThread):
             sino2d_transform = drehung(sino2d, -self.alpha_r[i])
             self.image_r += sino2d_transform
             self.signal.emit(self.alpha_r[i])
-        self.signal_finish.emit(0)
+            if self.breaking:
+                self.signal_finish.emit(True)
+                return
+        self.signal_finish.emit(False)
 
 
 if __name__ == "__main__":

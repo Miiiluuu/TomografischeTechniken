@@ -195,7 +195,7 @@ class Gui(QtWidgets.QWidget):
         self.tb.addAction(self.load)
         self.load.triggered.connect(self.loadButtonPress)
         # SaveButton Sinogramm hinzufuegen
-        self.saveSino = QAction(QIcon('SaveSinoIcon4.bmp'), "Save Sinogramm", self)
+        self.saveSino = QAction(QIcon('SaveSinoIcon.bmp'), "Save Sinogramm", self)
         self.saveSino.setEnabled(False)
         self.saveSino.setToolTip('Speichere Sinogramm (Ctrl+S). \n'
                                  'Speichert aktuelles Sinogramm unter selbst'
@@ -221,7 +221,7 @@ class Gui(QtWidgets.QWidget):
         # AbbruchButton hinzufuegen
         # TODO: soll Berechnung abbrechen!
         self.breaking = QAction(QIcon('abbruchIcon.bmp'), "Close", self)
-        self.breaking.setToolTip('Abbruch(Ctrl+B). \n'
+        self.breaking.setToolTip('Abbruch (Ctrl+B). \n'
                                  'Abbruch der aktuellen Berechnung.')
         self.breaking.setShortcut('Ctrl+B')
         self.breaking.setEnabled(False)
